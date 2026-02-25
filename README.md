@@ -1,5 +1,9 @@
 # 3ANDM_Nutriscan
 
+Jolan:
+-FetchData
+-SearchAPI
+-useDebounce
 
 # dépendances
 npx expo install @react-navigation/native react-native-screens react-native-safe-area-context
