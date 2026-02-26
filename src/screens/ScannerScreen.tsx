@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ScannerStackParamList } from "../navigation/types";
 import { OFFFetch } from "../utils/api";
 import type { OFFProductResponse } from "../types/off";
+import { addToHistory } from "../utils/historyStorage";
 
 type Props = NativeStackScreenProps<ScannerStackParamList, "Scanner">;
 
@@ -61,6 +62,19 @@ export default function ScannerScreen({ navigation }: Props) {
         }
 
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        const p = data.product;
+
+        await addToHistory({
+          barcode,
+          scannedAt: Date.now(),
+          name: p.product_name ?? undefined,
+          brand: p.brands ?? undefined,
+          imageUrl: p.image_url ?? undefined,
+          nutriScore: p.nutriscore_grade ?? undefined,
+        });
+
+        navigation.navigate("ProductDetails", { barcode });
 
         navigation.navigate("ProductDetails", { barcode });
       } catch (e) {
