@@ -1,13 +1,23 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import type { RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { OFFFetch } from "../utils/api";
 import type { OFFProductResponse, OFFProduct } from "../types/off";
-import type { ProductDetailsParams } from "../navigation/types";
+import type { ProductDetailsParams, HistoryStackParamList } from "../navigation/types";
 
 type Props = {
   route: RouteProp<Record<string, ProductDetailsParams>, string>;
+  navigation: NativeStackNavigationProp<HistoryStackParamList>;
 };
 
 function nutriColor(grade?: string) {
@@ -25,7 +35,7 @@ function fmt(n?: number, unit = "g") {
   return `${n} ${unit}`;
 }
 
-export default function ProductDetailsScreen({ route }: Props) {
+export default function ProductDetailsScreen({ route, navigation }: Props) {
   const barcode = route.params?.barcode;
 
   const [loading, setLoading] = useState(true);
@@ -56,7 +66,7 @@ export default function ProductDetailsScreen({ route }: Props) {
         } else {
           setProduct(data.product);
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setError("Erreur réseau.");
       } finally {
         if (!cancelled) setLoading(false);
@@ -101,9 +111,15 @@ export default function ProductDetailsScreen({ route }: Props) {
 
       <View style={styles.hero}>
         {product.image_url ? (
-          <Image source={{ uri: product.image_url }} style={styles.image} />
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: product.image_url }}
+              style={styles.image}
+              resizeMode="contain"
+            />
+          </View>
         ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
+          <View style={[styles.imageContainer, styles.imagePlaceholder]}>
             <Text style={styles.muted}>Pas d’image</Text>
           </View>
         )}
@@ -118,6 +134,13 @@ export default function ProductDetailsScreen({ route }: Props) {
           </View>
         </View>
       </View>
+      
+      <Pressable
+        style={styles.cta}
+        onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
+      >
+        <Text style={styles.ctaText}>Comparer avec un autre produit</Text>
+      </Pressable>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Nutrition (pour 100g)</Text>
@@ -165,7 +188,17 @@ const styles = StyleSheet.create({
   body: { color: "rgba(255,255,255,0.85)", fontSize: 14, lineHeight: 20 },
 
   hero: { marginTop: 6, gap: 12 },
-  image: { width: "100%", height: 220, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.06)" },
+
+  imageContainer: {
+    width: "100%",
+    height: 220,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  image: { width: "92%", height: "92%" },
   imagePlaceholder: { alignItems: "center", justifyContent: "center" },
 
   badges: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
@@ -187,4 +220,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
   rowLabel: { color: "rgba(255,255,255,0.75)" },
   rowValue: { color: "#fff", fontWeight: "700" },
+
+  cta: { marginTop: 10, backgroundColor: "rgba(255,255,255,0.10)", padding: 12, borderRadius: 16 },
+  ctaText: { color: "#fff", fontWeight: "900", textAlign: "center" },
 });
