@@ -3,6 +3,7 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { ThemeProvider, useAppTheme } from "./src/context/ThemeContext";
+import { FavoritesProvider } from "./src/context/FavoritesContext";
 
 function AppNavigation() {
   const { navigationTheme } = useAppTheme();
@@ -17,7 +18,9 @@ function AppNavigation() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppNavigation />
+      <FavoritesProvider>
+        <AppNavigation />
+      </FavoritesProvider>
     </ThemeProvider>
   );
 }
