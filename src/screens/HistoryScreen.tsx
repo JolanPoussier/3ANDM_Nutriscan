@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -107,7 +107,7 @@ export default function HistoryScreen({ navigation }: Props) {
                 {item.imageUrl ? (
                   <Image source={{ uri: item.imageUrl }} style={styles.thumb} resizeMode="contain" />
                 ) : (
-                  <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                  <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
                     <Text style={styles.thumbText}>—</Text>
                   </View>
                 )}
@@ -121,7 +121,7 @@ export default function HistoryScreen({ navigation }: Props) {
                   {(item.brand ?? "Marque inconnue")} • {formatDate(item.scannedAt)}
                 </Text>
 
-                <View style={{ marginTop: 8, flexDirection: "row", gap: 8, alignItems: "center" }}>
+                <View style={{ marginTop: 8, flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <View style={[styles.badge, { backgroundColor: nutriColor(item.nutriScore) }]}>
                     <Text style={styles.badgeText}>
                       Nutri {item.nutriScore ? item.nutriScore.toUpperCase() : "—"}
@@ -129,7 +129,15 @@ export default function HistoryScreen({ navigation }: Props) {
                   </View>
                   <Text style={styles.muted}>barcode: {item.barcode}</Text>
                 </View>
+
+                <Pressable
+                  style={styles.compareBtn}
+                  onPress={() => navigation.navigate("CompareHub", { leftBarcode: item.barcode })}
+                >
+                  <Text style={styles.compareText}>Comparer</Text>
+                </Pressable>
               </View>
+
               <Pressable
                 hitSlop={10}
                 style={styles.deleteBtn}
@@ -189,4 +197,13 @@ const styles = StyleSheet.create({
   },
   deleteText: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 14 },
 
+  compareBtn: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
+  compareText: { color: "#fff", fontWeight: "900", fontSize: 12 },
 });
