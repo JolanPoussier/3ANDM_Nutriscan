@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -14,6 +15,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useDebounce } from "../hooks/useDebounce";
 import { OFFSearch } from "../utils/api";
 import type { SearchStackParamList } from "../navigation/types";
+import LoadingDots from "../components/LoadingDots";
 
 type Props = NativeStackScreenProps<SearchStackParamList, "Recherche">;
 
@@ -107,6 +109,7 @@ export default function SearchScreen({ navigation }: Props) {
   const [results, setResults] = useState<SearchItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const lastEndReachedAt = useRef(0);
 
   async function fetchSearchPage(searchTerm: string, nextPage: number) {
     const data = await OFFSearch<SearchResponse>(searchTerm, {
@@ -147,7 +150,7 @@ export default function SearchScreen({ navigation }: Props) {
 
         setResults(mapped);
         setPage(1);
-        setHasMore(sourceLength >= PAGE_SIZE);
+        setHasMore(mapped.length > 0);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Erreur réseau pendant la recherche.");
@@ -189,11 +192,19 @@ export default function SearchScreen({ navigation }: Props) {
         return [...prev, ...deduped];
       });
       setPage(nextPage);
-      setHasMore(sourceLength >= PAGE_SIZE);
+      setHasMore(sourceLength > 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur réseau pendant la recherche.");
     } finally {
       setLoadingMore(false);
+    }
+  }
+
+  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    if (distanceFromBottom < 120) {
+      loadMore();
     }
   }
 
@@ -214,7 +225,7 @@ export default function SearchScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator />
+          <LoadingDots />
           <Text style={styles.muted}>Recherche en cours…</Text>
         </View>
       ) : (
@@ -222,8 +233,15 @@ export default function SearchScreen({ navigation }: Props) {
           data={results}
           contentContainerStyle={results.length === 0 ? styles.emptyList : styles.list}
           keyExtractor={(item) => item.barcode}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.35}
+          onEndReached={() => {
+            const now = Date.now();
+            if (now - lastEndReachedAt.current < 600) return;
+            lastEndReachedAt.current = now;
+            loadMore();
+          }}
+          onEndReachedThreshold={0.2}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
@@ -261,8 +279,12 @@ export default function SearchScreen({ navigation }: Props) {
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.footer}>
-                <ActivityIndicator />
+                <LoadingDots size={7} />
                 <Text style={styles.muted}>Chargement de plus de résultats…</Text>
+              </View>
+            ) : hasMore && results.length > 0 ? (
+              <View style={styles.footerIdle}>
+                <LoadingDots size={6} color="rgba(255,255,255,0.45)" />
               </View>
             ) : null
           }
@@ -292,6 +314,7 @@ const styles = StyleSheet.create({
   emptyList: { flexGrow: 1, paddingHorizontal: 18, paddingBottom: 20 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
   footer: { alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
+  footerIdle: { alignItems: "center", justifyContent: "center", paddingVertical: 10 },
   muted: { color: "rgba(255,255,255,0.7)", textAlign: "center" },
 
   item: {
