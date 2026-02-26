@@ -55,6 +55,20 @@ export default function HistoryScreen({ navigation }: Props) {
 
   const empty = useMemo(() => !loading && items.length === 0, [loading, items.length]);
 
+  const onDelete = useCallback((barcode: string) => {
+    Alert.alert("Supprimer", "Retirer ce produit de l'historique ?", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          const next = await removeFromHistory(barcode);
+          setItems(next);
+        },
+      },
+    ]);
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -116,6 +130,13 @@ export default function HistoryScreen({ navigation }: Props) {
                   <Text style={styles.muted}>barcode: {item.barcode}</Text>
                 </View>
               </View>
+              <Pressable
+                hitSlop={10}
+                style={styles.deleteBtn}
+                onPress={() => onDelete(item.barcode)}
+              >
+                <Text style={styles.deleteText}>✕</Text>
+              </Pressable>
             </View>
           </Pressable>
         )}
@@ -157,5 +178,15 @@ const styles = StyleSheet.create({
 
   badge: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
   badgeText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+
+  deleteBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteText: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 14 },
 
 });
