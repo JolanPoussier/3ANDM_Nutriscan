@@ -53,6 +53,12 @@ export type SettingsStackParamList = {
 export type TabParamList = {
   ScannerTab: undefined;
   SearchTab: undefined;
+  FavoritesTab: undefined;
   HistoryTab: undefined;
   SettingsTab: undefined;
+};
+
+export type FavoritesStackParamList = {
+  Favoris: undefined;
+  ProductDetails: ProductDetailsParams;
 };

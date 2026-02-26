@@ -14,6 +14,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { OFFFetch } from "../utils/api";
 import type { OFFProductResponse, OFFProduct } from "../types/off";
 import type { ProductDetailsParams, HistoryStackParamList } from "../navigation/types";
+import { useFavorites } from "../context/FavoritesContext";
 
 type Props = {
   route: RouteProp<Record<string, ProductDetailsParams>, string>;
@@ -37,6 +38,7 @@ function fmt(n?: number, unit = "g") {
 
 export default function ProductDetailsScreen({ route, navigation }: Props) {
   const barcode = route.params?.barcode;
+  const { categories, addOrUpdateFavorite, removeFavorite, isFavorite, getFavorite } = useFavorites();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +82,27 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
   }, [barcode]);
 
   const headerTitle = useMemo(() => product?.product_name ?? "Fiche produit", [product?.product_name]);
+  const favorite = getFavorite(barcode);
+  const favoriteCategoryName = categories.find((cat) => cat.id === favorite?.categoryId)?.name;
+  const favoriteActive = isFavorite(barcode);
+
+  function onFavoritePress() {
+    if (!barcode || !product) return;
+    if (favoriteActive) {
+      removeFavorite(barcode);
+      return;
+    }
+    addOrUpdateFavorite(
+      {
+        barcode,
+        name: product.product_name?.trim() || "Produit sans nom",
+        brand: product.brands?.trim() || "Marque inconnue",
+        imageUrl: product.image_url,
+        nutriScore: product.nutriscore_grade?.toUpperCase(),
+      },
+      "default_uncategorized"
+    );
+  }
 
   if (loading) {
     return (
@@ -103,68 +126,78 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
   const grade = product.nutriscore_grade?.toUpperCase();
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{headerTitle}</Text>
-      <Text style={styles.muted}>
-        {(product.brands ?? "Marque inconnue")} • {(product.quantity ?? "Quantité inconnue")}
-      </Text>
+    <>
+      <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>{headerTitle}</Text>
+        <Text style={styles.muted}>
+          {(product.brands ?? "Marque inconnue")} • {(product.quantity ?? "Quantité inconnue")}
+        </Text>
 
-      <View style={styles.hero}>
-        {product.image_url ? (
-          <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: product.image_url }}
-              style={styles.image}
-              resizeMode="contain"
-            />
-          </View>
-        ) : (
-          <View style={[styles.imageContainer, styles.imagePlaceholder]}>
-            <Text style={styles.muted}>Pas d’image</Text>
-          </View>
-        )}
+        <View style={styles.hero}>
+          {product.image_url ? (
+            <View style={styles.imageContainer}>
+              <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="contain" />
+            </View>
+          ) : (
+            <View style={[styles.imageContainer, styles.imagePlaceholder]}>
+              <Text style={styles.muted}>Pas d’image</Text>
+            </View>
+          )}
 
-        <View style={styles.badges}>
-          <View style={[styles.badge, { backgroundColor: nutriColor(product.nutriscore_grade) }]}>
-            <Text style={styles.badgeText}>Nutri-Score {grade ?? "—"}</Text>
+          <View style={styles.badges}>
+            <View style={[styles.badge, { backgroundColor: nutriColor(product.nutriscore_grade) }]}>
+              <Text style={styles.badgeText}>Nutri-Score {grade ?? "—"}</Text>
+            </View>
+
+            <View style={[styles.badge, styles.badgeSoft]}>
+              <Text style={styles.badgeTextSoft}>NOVA {product.nova_group ?? "—"}</Text>
+            </View>
           </View>
 
-          <View style={[styles.badge, styles.badgeSoft]}>
-            <Text style={styles.badgeTextSoft}>NOVA {product.nova_group ?? "—"}</Text>
+          <View style={styles.favoriteRow}>
+            <Pressable
+              style={[styles.heartButton, favoriteActive ? styles.heartButtonActive : null]}
+              onPress={onFavoritePress}
+            >
+              <Text style={styles.heartIcon}>{favoriteActive ? "♥" : "♡"}</Text>
+            </Pressable>
+            {favoriteCategoryName ? (
+              <Text style={styles.favoriteSubText}>Catégorie: {favoriteCategoryName}</Text>
+            ) : null}
           </View>
         </View>
-      </View>
-      
-      <Pressable
-        style={styles.cta}
-        onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
-      >
-        <Text style={styles.ctaText}>Comparer avec un autre produit</Text>
-      </Pressable>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Nutrition (pour 100g)</Text>
+        <Pressable
+          style={styles.cta}
+          onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
+        >
+          <Text style={styles.ctaText}>Comparer avec un autre produit</Text>
+        </Pressable>
 
-        <Row label="Calories" value={fmt(product.nutriments?.["energy-kcal_100g"], "kcal")} />
-        <Row label="Graisses" value={fmt(product.nutriments?.fat_100g)} />
-        <Row label="Saturées" value={fmt(product.nutriments?.["saturated-fat_100g"])} />
-        <Row label="Glucides" value={fmt(product.nutriments?.carbohydrates_100g)} />
-        <Row label="Sucres" value={fmt(product.nutriments?.sugars_100g)} />
-        <Row label="Fibres" value={fmt(product.nutriments?.fiber_100g)} />
-        <Row label="Protéines" value={fmt(product.nutriments?.proteins_100g)} />
-        <Row label="Sel" value={fmt(product.nutriments?.salt_100g)} />
-      </View>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Nutrition (pour 100g)</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Ingrédients</Text>
-        <Text style={styles.body}>{product.ingredients_text?.trim() || "—"}</Text>
-      </View>
+          <Row label="Calories" value={fmt(product.nutriments?.["energy-kcal_100g"], "kcal")} />
+          <Row label="Graisses" value={fmt(product.nutriments?.fat_100g)} />
+          <Row label="Saturées" value={fmt(product.nutriments?.["saturated-fat_100g"])} />
+          <Row label="Glucides" value={fmt(product.nutriments?.carbohydrates_100g)} />
+          <Row label="Sucres" value={fmt(product.nutriments?.sugars_100g)} />
+          <Row label="Fibres" value={fmt(product.nutriments?.fiber_100g)} />
+          <Row label="Protéines" value={fmt(product.nutriments?.proteins_100g)} />
+          <Row label="Sel" value={fmt(product.nutriments?.salt_100g)} />
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Allergènes (tags)</Text>
-        <Text style={styles.body}>{product.allergens_tags?.join(", ") || "—"}</Text>
-      </View>
-    </ScrollView>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Ingrédients</Text>
+          <Text style={styles.body}>{product.ingredients_text?.trim() || "—"}</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Allergènes (tags)</Text>
+          <Text style={styles.body}>{product.allergens_tags?.join(", ") || "—"}</Text>
+        </View>
+      </ScrollView>
+    </>
   );
 }
 
@@ -206,6 +239,23 @@ const styles = StyleSheet.create({
   badgeText: { color: "#fff", fontWeight: "900", fontSize: 13 },
   badgeSoft: { backgroundColor: "rgba(255,255,255,0.10)" },
   badgeTextSoft: { color: "rgba(255,255,255,0.92)", fontWeight: "900", fontSize: 13 },
+  favoriteRow: { marginTop: 2, flexDirection: "row", alignItems: "center", gap: 10 },
+  heartButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  heartButtonActive: {
+    backgroundColor: "rgba(239,68,68,0.22)",
+    borderColor: "rgba(248,113,113,0.5)",
+  },
+  heartIcon: { color: "#fff", fontSize: 22, lineHeight: 22, fontWeight: "900" },
+  favoriteSubText: { color: "rgba(191,219,254,0.85)", fontSize: 12 },
 
   card: {
     backgroundColor: "rgba(255,255,255,0.06)",
