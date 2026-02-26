@@ -21,7 +21,13 @@ function buildOFFUrl(path: string, params: OFFParams = {}) {
 
 async function offRequest<T>(path: string, params: OFFParams = {}): Promise<T> {
   const url = buildOFFUrl(path, params);
-  const res = await fetch(url);
+
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "NutriScanSUPINFO/1.0 (contact@supinfo.com)",
+    },
+  });
 
   if (!res.ok) {
     throw new Error(`OpenFoodFactAPI: ${res.status}`);
