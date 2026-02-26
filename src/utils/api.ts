@@ -1,10 +1,21 @@
 type OFFParams = Record<string, string | number | boolean | null | undefined>;
+type OFFSearchParams = {
+  page?: number;
+  size?: number;
+  sort_by?: string;
+  fields?: string;
+};
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const OFF_SEARCH_BASE_URL = process.env.EXPO_PUBLIC_OFF_SEARCH_BASE_URL;
+
 if (!API_BASE_URL) {
   throw new Error("Missing EXPO_PUBLIC_API_URL");
 }
-const WEBSITE_BASE_URL = new URL(API_BASE_URL).origin;
+if (!OFF_SEARCH_BASE_URL) {
+  throw new Error("Missing EXPO_PUBLIC_OFF_SEARCH_BASE_URL");
+}
+const OFF_SEARCH_ROOT = OFF_SEARCH_BASE_URL.trim().replace(/[;]+$/, "").replace(/\/+$/, "");
 
 function buildOFFUrl(path: string, params: OFFParams = {}) {
   const searchParams = new URLSearchParams();
@@ -41,22 +52,36 @@ export function OFFFetch<T>(endpoint: string, params: OFFParams = {}) {
   return offRequest<T>(path, params);
 }
 
-export function OFFSearch<T>(searchText: string) {
+export function OFFSearch<T>(searchText: string, params: OFFSearchParams = {}) {
   const searchParams = new URLSearchParams({
-    action: "process",
-    json: "1",
-    search_simple: "1",
-    search_terms: searchText,
-    page_size: "20",
-    fields: "code,product_name,brands, unique_scans_n",
-    sort_by: "unique_scans_n",
+    q: searchText,
+    page: String(params.page ?? 1),
+    size: String(params.size ?? 20),
+    sort_by: params.sort_by ?? "unique_scans_n",
   });
 
-  const url = `${WEBSITE_BASE_URL}/cgi/search.pl?${searchParams.toString()}`;
-  return fetch(url).then((res) => {
+  if (params.fields) {
+    searchParams.set("fields", params.fields);
+  }
+
+  const url = `${OFF_SEARCH_ROOT}/search?${searchParams.toString()}`;
+  return fetch(url, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "NutriScanSUPINFO/1.0 (contact@supinfo.com)",
+    },
+  }).then(async (res) => {
     if (!res.ok) {
-      throw new Error(`OpenFoodFactAPI: ${res.status}`);
+      throw new Error(`OpenFoodFactAPI: ${res.status} (${url})`);
     }
-    return res.json() as Promise<T>;
+
+    try {
+      return (await res.json()) as T;
+    } catch {
+      throw new Error(`OpenFoodFactAPI: invalid JSON response (${url})`);
+    }
+  }).catch((e) => {
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(`Search request failed: ${message}`);
   });
 }
