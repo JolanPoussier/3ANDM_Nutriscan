@@ -133,6 +133,11 @@ export default function FavoritesScreen({ navigation }: Props) {
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: isDark ? "#fff" : "#101114" }]}>{category.name}</Text>
               <View style={styles.sectionRight}>
+                {category.id !== "default_uncategorized" ? (
+                  <Pressable onPress={() => onDeleteCategory(category.id, category.name)} style={styles.iconAction}>
+                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                  </Pressable>
+                ) : null}
                 <Text style={[styles.countText, { color: isDark ? "rgba(255,255,255,0.75)" : "rgba(16,17,20,0.7)" }]}>
                   {items.length}
                 </Text>
@@ -143,11 +148,6 @@ export default function FavoritesScreen({ navigation }: Props) {
                     color={isDark ? "rgba(255,255,255,0.8)" : "rgba(16,17,20,0.8)"}
                   />
                 </Pressable>
-                {category.id !== "default_uncategorized" ? (
-                  <Pressable onPress={() => onDeleteCategory(category.id, category.name)} style={styles.iconAction}>
-                    <Text style={styles.deleteText}>Supprimer</Text>
-                  </Pressable>
-                ) : null}
               </View>
             </View>
 
@@ -245,7 +245,6 @@ const styles = StyleSheet.create({
   countText: { fontSize: 13, fontWeight: "700", minWidth: 20, textAlign: "right" },
   iconAction: { paddingHorizontal: 4, paddingVertical: 2 },
   sectionTitle: { fontSize: 16, fontWeight: "800" },
-  deleteText: { color: "#ef4444", fontWeight: "700", fontSize: 13 },
   muted: { fontSize: 13 },
   item: {
     borderWidth: 1,
