@@ -1,14 +1,24 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
-import * as Haptics from "expo-haptics";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import {
+  BarcodeScanningResult,
+  CameraView,
+  useCameraPermissions,
+} from "expo-camera";
+import * as Haptics from "expo-haptics";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import type { ScannerStackParamList } from "../navigation/types";
-import { OFFFetch } from "../utils/api";
-import type { OFFProductResponse } from "../types/off";
-import { addToHistory } from "../utils/historyStorage";
 import { useI18n } from "../context/I18nContext";
+import type { ScannerStackParamList } from "../navigation/types";
+import type { OFFProductResponse } from "../types/off";
+import { OFFFetch } from "../utils/api";
+import { addToHistory } from "../utils/historyStorage";
 
 type Props = NativeStackScreenProps<ScannerStackParamList, "Scanner">;
 
@@ -24,16 +34,8 @@ export default function ScannerScreen({ navigation }: Props) {
 
   const barcodeTypes = useMemo(
     () =>
-      [
-        "ean13",
-        "ean8",
-        "upc_a",
-        "upc_e",
-        "code128",
-        "code39",
-        "qr",
-      ] as const,
-    []
+      ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "qr"] as const,
+    [],
   );
 
   const reset = useCallback(() => {
@@ -57,13 +59,17 @@ export default function ScannerScreen({ navigation }: Props) {
         const data = await OFFFetch<OFFProductResponse>(`product/${barcode}`);
 
         if (data?.status !== 1 || !data.product) {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          await Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Error,
+          );
           setError(t("scanner.notFound"));
           locked.current = false;
           return;
         }
 
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
 
         const p = data.product;
 
@@ -87,7 +93,7 @@ export default function ScannerScreen({ navigation }: Props) {
         setIsLoading(false);
       }
     },
-    [navigation, t]
+    [navigation, t],
   );
 
   if (!permission) {
@@ -132,7 +138,9 @@ export default function ScannerScreen({ navigation }: Props) {
           {isLoading ? (
             <View style={styles.row}>
               <ActivityIndicator />
-              <Text style={[styles.text, { marginLeft: 10 }]}>{t("scanner.searching")}</Text>
+              <Text style={[styles.text, { marginLeft: 10 }]}>
+                {t("scanner.searching")}
+              </Text>
             </View>
           ) : error ? (
             <>
@@ -174,11 +182,11 @@ const styles = StyleSheet.create({
   frame: {
     alignSelf: "center",
     width: "86%",
-    height: 230,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
-    backgroundColor: "rgba(0,0,0,0.15)",
+    height: 250,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: "#10b981",
+    backgroundColor: "rgba(16, 185, 129, 0.05)",
   },
 
   bottom: {
@@ -194,26 +202,49 @@ const styles = StyleSheet.create({
 
   row: { flexDirection: "row", alignItems: "center" },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#000" },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+    backgroundColor: "#000",
+  },
 
-  btnPrimary: { backgroundColor: "#fff", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14 },
-  btnPrimaryText: { color: "#000", fontWeight: "800" },
+  btnPrimary: {
+    backgroundColor: "#10b981",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+  },
+  btnPrimaryText: { color: "#fff", fontWeight: "800", fontSize: 16 },
 
-  btnSecondary: { backgroundColor: "rgba(255,255,255,0.12)", paddingVertical: 12, borderRadius: 14 },
-  btnSecondaryText: { color: "#fff", fontWeight: "800", textAlign: "center" },
+  btnSecondary: {
+    backgroundColor: "rgba(16, 185, 129, 0.2)",
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  btnSecondaryText: {
+    color: "#10b981",
+    fontWeight: "800",
+    textAlign: "center",
+    fontSize: 15,
+  },
 
   fab: {
     position: "absolute",
-    right: 16,
-    bottom: 18,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#10b981",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
   },
   fabText: { color: "#fff", fontSize: 22, fontWeight: "800" },
 });

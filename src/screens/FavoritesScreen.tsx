@@ -85,10 +85,10 @@ export default function FavoritesScreen({ navigation }: Props) {
   return (
     <>
       <ScrollView
-        style={[styles.page, { backgroundColor: isDark ? "#0b0b0c" : "#f7f7f8" }]}
+        style={[styles.page, { backgroundColor: isDark ? "#0f172a" : "#f8fafc" }]}
         contentContainerStyle={styles.content}
       >
-        <Text style={[styles.title, { color: isDark ? "#fff" : "#101114" }]}>Favoris</Text>
+        <Text style={[styles.title, { color: isDark ? "#f8fafc" : "#0f172a" }]}>Favoris</Text>
 
         <View style={styles.addRow}>
           <TextInput
@@ -98,13 +98,13 @@ export default function FavoritesScreen({ navigation }: Props) {
             returnKeyType="done"
             blurOnSubmit
             placeholder="Nouvelle catégorie"
-            placeholderTextColor={isDark ? "rgba(255,255,255,0.45)" : "rgba(16,17,20,0.45)"}
+            placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
             style={[
               styles.input,
               {
-                backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fff",
-                borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(16,17,20,0.12)",
-                color: isDark ? "#fff" : "#101114",
+                backgroundColor: isDark ? "#1e293b" : "#ffffff",
+                borderColor: isDark ? "#334155" : "#e2e8f0",
+                color: isDark ? "#f8fafc" : "#0f172a",
               },
             ]}
           />
@@ -114,7 +114,7 @@ export default function FavoritesScreen({ navigation }: Props) {
         </View>
 
         {favorites.length === 0 ? (
-          <Text style={[styles.empty, { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(16,17,20,0.6)" }]}>
+          <Text style={[styles.empty, { color: isDark ? "#94a3b8" : "#64748b" }]}>
             Aucun favori pour le moment.
           </Text>
         ) : null}
@@ -125,34 +125,34 @@ export default function FavoritesScreen({ navigation }: Props) {
             style={[
               styles.section,
               {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#fff",
-                borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.10)",
+                backgroundColor: isDark ? "#1e293b" : "#ffffff",
+                borderColor: isDark ? "#334155" : "#e2e8f0",
               },
             ]}
           >
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: isDark ? "#fff" : "#101114" }]}>{category.name}</Text>
+              <Text style={[styles.sectionTitle, { color: isDark ? "#f8fafc" : "#0f172a" }]}>{category.name}</Text>
               <View style={styles.sectionRight}>
                 {category.id !== "default_uncategorized" ? (
                   <Pressable onPress={() => onDeleteCategory(category.id, category.name)} style={styles.iconAction}>
-                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
                   </Pressable>
                 ) : null}
-                <Text style={[styles.countText, { color: isDark ? "rgba(255,255,255,0.75)" : "rgba(16,17,20,0.7)" }]}>
+                <Text style={[styles.countText, { color: isDark ? "#cbd5e1" : "#475569" }]}>
                   {items.length}
                 </Text>
                 <Pressable onPress={() => toggleCategory(category.id)} style={styles.iconAction}>
                   <Ionicons
                     name={collapsedCategoryIds.includes(category.id) ? "chevron-down" : "chevron-up"}
-                    size={16}
-                    color={isDark ? "rgba(255,255,255,0.8)" : "rgba(16,17,20,0.8)"}
+                    size={20}
+                    color={isDark ? "#cbd5e1" : "#475569"}
                   />
                 </Pressable>
               </View>
             </View>
 
             {collapsedCategoryIds.includes(category.id) ? null : items.length === 0 ? (
-              <Text style={[styles.muted, { color: isDark ? "rgba(255,255,255,0.65)" : "rgba(16,17,20,0.5)" }]}>
+              <Text style={[styles.muted, { color: isDark ? "#94a3b8" : "#64748b" }]}>
                 Aucun produit dans cette catégorie.
               </Text>
             ) : (
@@ -163,8 +163,8 @@ export default function FavoritesScreen({ navigation }: Props) {
                   style={[
                     styles.item,
                     {
-                      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#f4f5f7",
-                      borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.08)",
+                      backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                      borderColor: isDark ? "#334155" : "#e2e8f0",
                     },
                   ]}
                 >
@@ -175,11 +175,11 @@ export default function FavoritesScreen({ navigation }: Props) {
                   )}
 
                   <View style={styles.itemBody}>
-                    <Text style={[styles.itemName, { color: isDark ? "#fff" : "#101114" }]} numberOfLines={2}>
+                    <Text style={[styles.itemName, { color: isDark ? "#f8fafc" : "#0f172a" }]} numberOfLines={2}>
                       {item.name}
                     </Text>
                     <Text
-                      style={[styles.itemBrand, { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(16,17,20,0.65)" }]}
+                      style={[styles.itemBrand, { color: isDark ? "#94a3b8" : "#64748b" }]}
                       numberOfLines={1}
                     >
                       {item.brand}
@@ -220,61 +220,77 @@ export default function FavoritesScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
-  content: { padding: 14, paddingBottom: 28, gap: 12 },
-  title: { fontSize: 24, fontWeight: "800" },
-  addRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  content: { padding: 16, paddingBottom: 32, gap: 16 },
+  title: { fontSize: 28, fontWeight: "900", letterSpacing: -0.5 },
+  addRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   input: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: "600",
   },
   addButton: {
-    backgroundColor: "#2563eb",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: "#10b981",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  addButtonText: { color: "#fff", fontWeight: "700" },
-  empty: { textAlign: "center", marginTop: 8 },
-  section: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
+  addButtonText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  empty: { textAlign: "center", marginTop: 8, fontSize: 15 },
+  section: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 16,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  countText: { fontSize: 13, fontWeight: "700", minWidth: 20, textAlign: "right" },
-  iconAction: { paddingHorizontal: 4, paddingVertical: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: "800" },
-  muted: { fontSize: 13 },
+  sectionRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  countText: { fontSize: 15, fontWeight: "800", minWidth: 20, textAlign: "right" },
+  iconAction: { paddingHorizontal: 6, paddingVertical: 4 },
+  sectionTitle: { fontSize: 18, fontWeight: "900", letterSpacing: -0.2 },
+  muted: { fontSize: 14, fontWeight: "500" },
   item: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 8,
+    borderRadius: 16,
+    padding: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
-  image: { width: 58, height: 58, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.08)" },
-  imagePlaceholder: { backgroundColor: "rgba(255,255,255,0.08)" },
-  itemBody: { flex: 1, gap: 3 },
-  itemName: { fontWeight: "700", fontSize: 14 },
-  itemBrand: { fontSize: 13 },
-  itemActions: { flexDirection: "row", gap: 8, marginTop: 4 },
+  image: { width: 64, height: 64, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.05)" },
+  imagePlaceholder: { backgroundColor: "rgba(0,0,0,0.05)" },
+  itemBody: { flex: 1, gap: 4 },
+  itemName: { fontWeight: "800", fontSize: 15 },
+  itemBrand: { fontSize: 13, fontWeight: "500" },
+  itemActions: { flexDirection: "row", gap: 10, marginTop: 6 },
   smallButton: {
-    backgroundColor: "rgba(37,99,235,0.18)",
-    borderRadius: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
-  smallButtonText: { color: "#93c5fd", fontSize: 12, fontWeight: "700" },
+  smallButtonText: { color: "#10b981", fontSize: 12, fontWeight: "800" },
   trashButton: {
-    backgroundColor: "rgba(239,68,68,0.2)",
-    borderRadius: 8,
-    paddingVertical: 5,
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    borderRadius: 10,
+    paddingVertical: 6,
     paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  nutri: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  nutri: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   nutriText: { color: "#fff", fontWeight: "900", fontSize: 14 },
 });

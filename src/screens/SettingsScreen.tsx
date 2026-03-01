@@ -1,9 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
 
-import { useAppTheme } from "../context/ThemeContext";
 import { useI18n } from "../context/I18nContext";
+import { useAppTheme } from "../context/ThemeContext";
 import {
   ALLERGENS,
   DEFAULT_PREFERENCES,
@@ -64,7 +71,7 @@ export default function SettingsScreen() {
 
   const dietLabel = useMemo(
     () => t(`preferences.diets.${prefs.diet}`),
-    [prefs.diet, t]
+    [prefs.diet, t],
   );
 
   return (
@@ -72,11 +79,22 @@ export default function SettingsScreen() {
       style={[styles.page, { backgroundColor: isDark ? "#0b0b0c" : "#f7f7f8" }]}
       contentContainerStyle={{ paddingBottom: 24 }}
     >
-      <Text style={[styles.title, { color: titleColor }]}>{t("preferences.title")}</Text>
+      <Text style={[styles.title, { color: titleColor }]}>
+        {t("preferences.title")}
+      </Text>
 
-      <View style={[styles.block, { backgroundColor: cardBg, borderColor: cardBorder }]}> 
-        <Text style={[styles.blockTitle, { color: titleColor }]}>{t("preferences.language.title")}</Text>
-        <Text style={[styles.help, { color: subColor }]}>{t("preferences.language.description")}</Text>
+      <View
+        style={[
+          styles.block,
+          { backgroundColor: cardBg, borderColor: cardBorder },
+        ]}
+      >
+        <Text style={[styles.blockTitle, { color: titleColor }]}>
+          {t("preferences.language.title")}
+        </Text>
+        <Text style={[styles.help, { color: subColor }]}>
+          {t("preferences.language.description")}
+        </Text>
 
         <View style={styles.chips}>
           {(["fr", "en"] as const).map((lang) => {
@@ -115,28 +133,46 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View style={[styles.row, { backgroundColor: cardBg, borderColor: cardBorder }]}> 
+      <View
+        style={[
+          styles.row,
+          { backgroundColor: cardBg, borderColor: cardBorder },
+        ]}
+      >
         <View style={styles.texts}>
-          <Text style={[styles.label, { color: titleColor }]}>{t("preferences.theme.darkMode")}</Text>
-          <Text style={[styles.help, { color: subColor }]}>{t("preferences.theme.description")}</Text>
+          <Text style={[styles.label, { color: titleColor }]}>
+            {t("preferences.theme.darkMode")}
+          </Text>
+          <Text style={[styles.help, { color: subColor }]}>
+            {t("preferences.theme.description")}
+          </Text>
         </View>
 
         <Switch
           value={isDark}
           onValueChange={(value) => setMode(value ? "dark" : "light")}
-          trackColor={{ false: "#bfc4cf", true: "#4f46e5" }}
+          trackColor={{ false: "#cbd5e1", true: "#10b981" }}
           thumbColor="#ffffff"
         />
       </View>
 
-      <View style={[styles.block, { backgroundColor: cardBg, borderColor: cardBorder }]}> 
-        <Text style={[styles.blockTitle, { color: titleColor }]}>{t("preferences.food.title")}</Text>
-        <Text style={[styles.help, { color: subColor }]}> 
+      <View
+        style={[
+          styles.block,
+          { backgroundColor: cardBg, borderColor: cardBorder },
+        ]}
+      >
+        <Text style={[styles.blockTitle, { color: titleColor }]}>
+          {t("preferences.food.title")}
+        </Text>
+        <Text style={[styles.help, { color: subColor }]}>
           {t("preferences.food.description")}
         </Text>
 
         <View style={{ marginTop: 12 }}>
-          <Text style={[styles.sectionTitle, { color: titleColor }]}>{t("preferences.food.dietTitle")}</Text>
+          <Text style={[styles.sectionTitle, { color: titleColor }]}>
+            {t("preferences.food.dietTitle")}
+          </Text>
           <Text style={[styles.help, { color: subColor }]}>
             {t("preferences.food.currentDiet", { diet: dietLabel })}
           </Text>
@@ -179,8 +215,12 @@ export default function SettingsScreen() {
         </View>
 
         <View style={{ marginTop: 14 }}>
-          <Text style={[styles.sectionTitle, { color: titleColor }]}>{t("preferences.food.allergensTitle")}</Text>
-          <Text style={[styles.help, { color: subColor }]}>{t("preferences.food.allergensDescription")}</Text>
+          <Text style={[styles.sectionTitle, { color: titleColor }]}>
+            {t("preferences.food.allergensTitle")}
+          </Text>
+          <Text style={[styles.help, { color: subColor }]}>
+            {t("preferences.food.allergensDescription")}
+          </Text>
 
           <View style={{ marginTop: 6 }}>
             {ALLERGENS.map((a) => {
@@ -197,12 +237,20 @@ export default function SettingsScreen() {
                       styles.checkbox,
                       {
                         borderColor: cardBorder,
-                        backgroundColor: checked ? (isDark ? "#ffffff" : "#101114") : "transparent",
+                        backgroundColor: checked
+                          ? isDark
+                            ? "#ffffff"
+                            : "#101114"
+                          : "transparent",
                       },
                     ]}
                   >
                     {checked ? (
-                      <Ionicons name="checkmark" size={16} color={isDark ? "#000" : "#fff"} />
+                      <Ionicons
+                        name="checkmark"
+                        size={16}
+                        color={isDark ? "#000" : "#fff"}
+                      />
                     ) : null}
                   </View>
                   <Text style={[styles.checkText, { color: titleColor }]}>
@@ -223,14 +271,19 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "800", marginBottom: 6 },
 
   row: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 14,
+    gap: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   texts: { flex: 1, gap: 4 },
   label: { fontSize: 16, fontWeight: "700" },
@@ -255,7 +308,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 
-  checkRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  checkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+  },
   checkbox: {
     width: 22,
     height: 22,

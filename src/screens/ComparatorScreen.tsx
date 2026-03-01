@@ -21,7 +21,7 @@ type MetricKey =
 type Metric = {
   key: MetricKey;
   label: string;
-  unit?: string; 
+  unit?: string;
 };
 
 const METRICS: Metric[] = [
@@ -325,78 +325,93 @@ function ProductHeader({ product, sideLabel }: { product: OFFProduct; sideLabel:
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c" },
+  page: { flex: 1, backgroundColor: "#0f172a" },
   content: { padding: 16, paddingBottom: 28, gap: 14 },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#0b0b0c" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#0f172a" },
 
-  title: { color: "#fff", fontSize: 22, fontWeight: "900" },
-  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
+  title: { color: "#f8fafc", fontSize: 24, fontWeight: "900", letterSpacing: -0.5 },
+  muted: { color: "#94a3b8", fontSize: 13 },
 
   twoCols: { flexDirection: "row", gap: 12 },
   headerCard: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
+    backgroundColor: "#1e293b",
+    borderRadius: 20,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "#334155",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  sideLabel: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginBottom: 8 },
+  sideLabel: { color: "#cbd5e1", fontSize: 13, marginBottom: 10, fontWeight: "700" },
 
   headerRow: { flexDirection: "row", gap: 10, alignItems: "center" },
   imgWrap: {
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "#0f172a",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  img: { width: "92%", height: "92%" },
+  img: { width: "95%", height: "95%" },
   imgPlaceholder: {},
 
-  pName: { color: "#fff", fontWeight: "900", fontSize: 13 },
-  pBadges: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
+  pName: { color: "#f8fafc", fontWeight: "900", fontSize: 14 },
+  pBadges: { flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" },
 
-  badgeSoft: { backgroundColor: "rgba(255,255,255,0.10)", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
-  badgeText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+  badgeSoft: { backgroundColor: "#334155", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
+  badgeText: { color: "#f8fafc", fontWeight: "900", fontSize: 11 },
 
   table: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
+    backgroundColor: "#1e293b",
+    borderRadius: 20,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 10,
+    borderColor: "#334155",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  row: { gap: 8 },
-  metric: { color: "rgba(255,255,255,0.8)", fontWeight: "800" },
+  row: { gap: 10 },
+  metric: { color: "#e2e8f0", fontWeight: "800", fontSize: 14 },
 
-  values: { flexDirection: "row", gap: 10 },
+  values: { flexDirection: "row", gap: 12 },
   cell: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "#0f172a",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "#334155",
     alignItems: "center",
     justifyContent: "center",
   },
-  cellText: { color: "#fff", fontWeight: "900" },
+  cellText: { color: "#f8fafc", fontWeight: "900", fontSize: 15 },
 
-  good: { backgroundColor: "rgba(27,158,62,0.25)", borderColor: "rgba(27,158,62,0.35)" },
-  bad: { backgroundColor: "rgba(214,69,65,0.25)", borderColor: "rgba(214,69,65,0.35)" },
+  good: { backgroundColor: "rgba(16, 185, 129, 0.15)", borderColor: "rgba(16, 185, 129, 0.4)" },
+  bad: { backgroundColor: "rgba(239, 68, 68, 0.15)", borderColor: "rgba(239, 68, 68, 0.4)" },
 
   summary: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 14,
+    backgroundColor: "#1e293b",
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "#334155",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  summaryTitle: { color: "#fff", fontWeight: "900", marginBottom: 6 },
-  summaryText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
+  summaryTitle: { color: "#f8fafc", fontWeight: "900", marginBottom: 8, fontSize: 16 },
+  summaryText: { color: "#e2e8f0", fontWeight: "800", fontSize: 15 },
 });
