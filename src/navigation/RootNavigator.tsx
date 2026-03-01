@@ -1,19 +1,17 @@
-import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 
-import { useI18n } from "../context/I18nContext";
-import { useAppTheme } from "../context/ThemeContext";
-import ComparatorScreen from "../screens/ComparatorScreen";
-import CompareHubScreen from "../screens/CompareHubScreen";
-import ComparePickScreen from "../screens/ComparePickScreen";
 import FavoritesScreen from "../screens/FavoritesScreen";
 import HistoryScreen from "../screens/HistoryScreen";
-import ProductDetailsScreen from "../screens/ProductDetailsScreen";
 import ScannerScreen from "../screens/ScannerScreen";
 import SearchScreen from "../screens/SearchScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+
+import ProductDetails from "../components/flows/ProductDetails";
+import Comparator from "../components/flows/Comparator";
+import CompareHub from "../components/flows/CompareHub";
+import ComparePick from "../components/flows/ComparePick";
 
 import type {
   FavoritesStackParamList,
@@ -33,211 +31,157 @@ const HistoryStack = createNativeStackNavigator<HistoryStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
 function ScannerStackScreen() {
-  const { t } = useI18n();
-
   return (
     <ScannerStack.Navigator>
-      <ScannerStack.Screen
-        name="Scanner"
-        component={ScannerScreen}
-        options={{ title: t("navigation.tabs.scanner") }}
-      />
+      <ScannerStack.Screen name="Scanner" component={ScannerScreen} />
       <ScannerStack.Screen
         name="ProductDetails"
-        component={ProductDetailsScreen}
-        options={{ title: t("navigation.stack.productDetails") }}
+        component={ProductDetails}
+        options={{ title: "Fiche produit" }}
       />
       <ScannerStack.Screen
         name="CompareHub"
-        component={CompareHubScreen}
-        options={{ title: t("navigation.stack.compare") }}
+        component={CompareHub}
+        options={{ title: "Comparer" }}
       />
       <ScannerStack.Screen
         name="ComparePick"
-        component={ComparePickScreen}
-        options={{ title: t("navigation.stack.pickProduct") }}
+        component={ComparePick}
+        options={{ title: "Choisir un produit" }}
       />
       <ScannerStack.Screen
         name="Comparator"
-        component={ComparatorScreen}
-        options={{ title: t("navigation.stack.comparator") }}
+        component={Comparator}
+        options={{ title: "Comparateur" }}
       />
     </ScannerStack.Navigator>
   );
 }
 
 function SearchStackScreen() {
-  const { t } = useI18n();
-
   return (
     <SearchStack.Navigator>
-      <SearchStack.Screen
-        name="Recherche"
-        component={SearchScreen}
-        options={{ title: t("navigation.tabs.search") }}
-      />
+      <SearchStack.Screen name="Recherche" component={SearchScreen} />
       <SearchStack.Screen
         name="ProductDetails"
-        component={ProductDetailsScreen}
-        options={{ title: t("navigation.stack.productDetails") }}
+        component={ProductDetails}
+        options={{ title: "Fiche produit" }}
       />
       <SearchStack.Screen
         name="CompareHub"
-        component={CompareHubScreen}
-        options={{ title: t("navigation.stack.compare") }}
+        component={CompareHub}
+        options={{ title: "Comparer" }}
       />
       <SearchStack.Screen
         name="ComparePick"
-        component={ComparePickScreen}
-        options={{ title: t("navigation.stack.pickProduct") }}
+        component={ComparePick}
+        options={{ title: "Choisir un produit" }}
       />
       <SearchStack.Screen
         name="Comparator"
-        component={ComparatorScreen}
-        options={{ title: t("navigation.stack.comparator") }}
+        component={Comparator}
+        options={{ title: "Comparateur" }}
       />
     </SearchStack.Navigator>
   );
 }
 
 function HistoryStackScreen() {
-  const { t } = useI18n();
-
   return (
     <HistoryStack.Navigator>
-      <HistoryStack.Screen
-        name="Historique"
-        component={HistoryScreen}
-        options={{ title: t("navigation.tabs.history") }}
-      />
+      <HistoryStack.Screen name="Historique" component={HistoryScreen} />
       <HistoryStack.Screen
         name="ProductDetails"
-        component={ProductDetailsScreen}
-        options={{ title: t("navigation.stack.productDetails") }}
+        component={ProductDetails}
+        options={{ title: "Fiche produit" }}
       />
       <HistoryStack.Screen
         name="CompareHub"
-        component={CompareHubScreen}
-        options={{ title: t("navigation.stack.compare") }}
+        component={CompareHub}
+        options={{ title: "Comparer" }}
       />
       <HistoryStack.Screen
         name="ComparePick"
-        component={ComparePickScreen}
-        options={{ title: t("navigation.stack.pickProduct") }}
+        component={ComparePick}
+        options={{ title: "Choisir un produit" }}
       />
       <HistoryStack.Screen
         name="Comparator"
-        component={ComparatorScreen}
-        options={{ title: t("navigation.stack.comparator") }}
+        component={Comparator}
+        options={{ title: "Comparateur" }}
       />
     </HistoryStack.Navigator>
   );
 }
 
 function FavoritesStackScreen() {
-  const { t } = useI18n();
-
   return (
     <FavoritesStack.Navigator>
-      <FavoritesStack.Screen
-        name="Favoris"
-        component={FavoritesScreen}
-        options={{ title: t("navigation.tabs.favorites") }}
-      />
+      <FavoritesStack.Screen name="Favoris" component={FavoritesScreen} />
       <FavoritesStack.Screen
         name="ProductDetails"
-        component={ProductDetailsScreen}
-        options={{ title: t("navigation.stack.productDetails") }}
+        component={ProductDetails}
+        options={{ title: "Fiche produit" }}
       />
     </FavoritesStack.Navigator>
   );
 }
 
 function SettingsStackScreen() {
-  const { t } = useI18n();
-
   return (
     <SettingsStack.Navigator>
-      <SettingsStack.Screen
-        name="Paramètres"
-        component={SettingsScreen}
-        options={{ title: t("navigation.tabs.settings") }}
-      />
+      <SettingsStack.Screen name="Paramètres" component={SettingsScreen} />
       <SettingsStack.Screen
         name="ProductDetails"
-        component={ProductDetailsScreen}
-        options={{ title: t("navigation.stack.productDetails") }}
+        component={ProductDetails}
+        options={{ title: "Fiche produit" }}
       />
       <SettingsStack.Screen
         name="CompareHub"
-        component={CompareHubScreen}
-        options={{ title: t("navigation.stack.compare") }}
+        component={CompareHub}
+        options={{ title: "Comparer" }}
       />
       <SettingsStack.Screen
         name="ComparePick"
-        component={ComparePickScreen}
-        options={{ title: t("navigation.stack.pickProduct") }}
+        component={ComparePick}
+        options={{ title: "Choisir un produit" }}
       />
       <SettingsStack.Screen
         name="Comparator"
-        component={ComparatorScreen}
-        options={{ title: t("navigation.stack.comparator") }}
+        component={Comparator}
+        options={{ title: "Comparateur" }}
       />
     </SettingsStack.Navigator>
   );
 }
 
 export default function RootNavigator() {
-  const { t } = useI18n();
-  const { theme } = useAppTheme();
-
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.tabBackground,
-          borderTopColor: theme.borderSoft,
-          borderTopWidth: 1,
-          elevation: 0,
-        },
-        tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.tabInactive,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any = "home";
-          if (route.name === "ScannerTab") iconName = focused ? "scan" : "scan-outline";
-          else if (route.name === "SearchTab") iconName = focused ? "search" : "search-outline";
-          else if (route.name === "FavoritesTab") iconName = focused ? "heart" : "heart-outline";
-          else if (route.name === "HistoryTab") iconName = focused ? "time" : "time-outline";
-          else if (route.name === "SettingsTab") iconName = focused ? "settings" : "settings-outline";
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-      })}
-    >
+    <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen
         name="ScannerTab"
         component={ScannerStackScreen}
-        options={{ title: t("navigation.tabs.scanner") }}
+        options={{ title: "Scanner" }}
       />
       <Tab.Screen
         name="SearchTab"
         component={SearchStackScreen}
-        options={{ title: t("navigation.tabs.search") }}
+        options={{ title: "Recherche" }}
       />
       <Tab.Screen
         name="FavoritesTab"
         component={FavoritesStackScreen}
-        options={{ title: t("navigation.tabs.favorites") }}
+        options={{ title: "Favoris" }}
       />
       <Tab.Screen
         name="HistoryTab"
         component={HistoryStackScreen}
-        options={{ title: t("navigation.tabs.history") }}
+        options={{ title: "Historique" }}
       />
       <Tab.Screen
         name="SettingsTab"
         component={SettingsStackScreen}
-        options={{ title: t("navigation.tabs.settings") }}
+        options={{ title: "Paramètres" }}
       />
     </Tab.Navigator>
   );

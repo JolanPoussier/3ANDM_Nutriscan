@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,17 +15,14 @@ import type { FavoritesStackParamList } from "../navigation/types";
 import { useFavorites } from "../context/FavoritesContext";
 import { useAppTheme } from "../context/ThemeContext";
 import CategoryPickerModal from "../components/CategoryPickerModal";
-import { getNutriColor } from "../utils/nutriColor";
-import { OFFFetch } from "../utils/api";
-import type { OFFProductResponse } from "../types/off";
-import { resolveProductImageUrl } from "../utils/productImage";
-import { normalizeNutriGrade } from "../utils/nutriScore";
+import NutriScoreBadge from "../components/ui/NutriScoreBadge";
+import ProductThumbnail from "../components/ui/ProductThumbnail";
 
 type Props = NativeStackScreenProps<FavoritesStackParamList, "Favoris">;
 
 export default function FavoritesScreen({ navigation }: Props) {
-  const { theme } = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { mode } = useAppTheme();
+  const isDark = mode === "dark";
   const {
     categories,
     favorites,
@@ -34,12 +30,11 @@ export default function FavoritesScreen({ navigation }: Props) {
     deleteCategory,
     moveFavorite,
     removeFavorite,
-  } = useFavorites();
-
+  } =
+    useFavorites();
   const [newCategory, setNewCategory] = useState("");
   const [moveTargetBarcode, setMoveTargetBarcode] = useState<string | null>(null);
   const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<string[]>([]);
-  const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
 
   const grouped = useMemo(() => {
     const map = new Map(categories.map((cat) => [cat.id, [] as typeof favorites]));
@@ -49,51 +44,6 @@ export default function FavoritesScreen({ navigation }: Props) {
     });
     return categories.map((cat) => ({ category: cat, items: map.get(cat.id) ?? [] }));
   }, [categories, favorites]);
-
-  const nutriStyle = useMemo(
-    () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
-    [theme],
-  );
-
-  useEffect(() => {
-    const missing = favorites
-      .filter((item) => !item.imageUrl && !resolvedImages[item.barcode])
-      .map((item) => item.barcode);
-    if (missing.length === 0) return;
-
-    let cancelled = false;
-
-    async function hydrateImages() {
-      const entries = await Promise.all(
-        missing.map(async (barcode) => {
-          try {
-            const data = await OFFFetch<OFFProductResponse>(`product/${barcode}`);
-            const url = resolveProductImageUrl(data?.product);
-            return url ? ([barcode, url] as const) : null;
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      if (cancelled) return;
-      const next = entries.filter((e): e is readonly [string, string] => Boolean(e));
-      if (next.length === 0) return;
-
-      setResolvedImages((prev) => {
-        const merged = { ...prev };
-        next.forEach(([barcode, url]) => {
-          merged[barcode] = url;
-        });
-        return merged;
-      });
-    }
-
-    hydrateImages();
-    return () => {
-      cancelled = true;
-    };
-  }, [favorites, resolvedImages]);
 
   function onAddCategory() {
     const name = newCategory.trim();
@@ -113,20 +63,23 @@ export default function FavoritesScreen({ navigation }: Props) {
       [
         { text: "Annuler", style: "cancel" },
         { text: "Supprimer", style: "destructive", onPress: () => deleteCategory(id) },
-      ],
+      ]
     );
   }
 
   function toggleCategory(categoryId: string) {
     setCollapsedCategoryIds((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   }
 
   return (
     <>
-      <ScrollView style={styles.page} contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.title}>Favoris</Text>
+      <ScrollView
+        style={[styles.page, { backgroundColor: isDark ? "#0b0b0c" : "#f7f7f8" }]}
+        contentContainerStyle={styles.content}
+      >
+        <Text style={[styles.title, { color: isDark ? "#fff" : "#101114" }]}>Favoris</Text>
 
         <View style={styles.addRow}>
           <TextInput
@@ -136,85 +89,107 @@ export default function FavoritesScreen({ navigation }: Props) {
             returnKeyType="done"
             blurOnSubmit
             placeholder="Nouvelle catégorie"
-            placeholderTextColor={theme.textMuted}
-            style={styles.input}
+            placeholderTextColor={isDark ? "rgba(255,255,255,0.45)" : "rgba(16,17,20,0.45)"}
+            style={[
+              styles.input,
+              {
+                backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fff",
+                borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(16,17,20,0.12)",
+                color: isDark ? "#fff" : "#101114",
+              },
+            ]}
           />
           <Pressable style={styles.addButton} onPress={onAddCategory}>
             <Text style={styles.addButtonText}>Ajouter</Text>
           </Pressable>
         </View>
 
-        {favorites.length === 0 ? <Text style={styles.empty}>Aucun favori pour le moment.</Text> : null}
+        {favorites.length === 0 ? (
+          <Text style={[styles.empty, { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(16,17,20,0.6)" }]}>
+            Aucun favori pour le moment.
+          </Text>
+        ) : null}
 
         {grouped.map(({ category, items }) => (
-          <View key={category.id} style={[styles.section, theme.shadows.sm]}>
+          <View
+            key={category.id}
+            style={[
+              styles.section,
+              {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#fff",
+                borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.10)",
+              },
+            ]}
+          >
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{category.name}</Text>
+              <Text style={[styles.sectionTitle, { color: isDark ? "#fff" : "#101114" }]}>{category.name}</Text>
               <View style={styles.sectionRight}>
                 {category.id !== "default_uncategorized" ? (
                   <Pressable onPress={() => onDeleteCategory(category.id, category.name)} style={styles.iconAction}>
-                    <Ionicons name="trash-outline" size={18} color={theme.error} />
+                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
                   </Pressable>
                 ) : null}
-                <Text style={styles.countText}>{items.length}</Text>
+                <Text style={[styles.countText, { color: isDark ? "rgba(255,255,255,0.75)" : "rgba(16,17,20,0.7)" }]}>
+                  {items.length}
+                </Text>
                 <Pressable onPress={() => toggleCategory(category.id)} style={styles.iconAction}>
                   <Ionicons
                     name={collapsedCategoryIds.includes(category.id) ? "chevron-down" : "chevron-up"}
-                    size={20}
-                    color={theme.textMuted}
+                    size={16}
+                    color={isDark ? "rgba(255,255,255,0.8)" : "rgba(16,17,20,0.8)"}
                   />
                 </Pressable>
               </View>
             </View>
 
             {collapsedCategoryIds.includes(category.id) ? null : items.length === 0 ? (
-              <Text style={styles.muted}>Aucun produit dans cette catégorie.</Text>
+              <Text style={[styles.muted, { color: isDark ? "rgba(255,255,255,0.65)" : "rgba(16,17,20,0.5)" }]}>
+                Aucun produit dans cette catégorie.
+              </Text>
             ) : (
-              items.map((item) => {
-                const imageUrl = item.imageUrl || resolvedImages[item.barcode];
-                return (
-                  <Pressable
-                    key={item.barcode}
-                    onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
-                    style={styles.item}
-                  >
-                    <View style={styles.image}>
-                      {imageUrl ? (
-                        <Image source={{ uri: imageUrl }} style={styles.image} />
-                      ) : (
-                        <View style={styles.imagePlaceholder}>
-                          <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
-                        </View>
-                      )}
-                    </View>
+              items.map((item) => (
+                <Pressable
+                  key={item.barcode}
+                  onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
+                  style={[
+                    styles.item,
+                    {
+                      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#f4f5f7",
+                      borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.08)",
+                    },
+                  ]}
+                >
+                  <ProductThumbnail
+                    imageUrl={item.imageUrl}
+                    size={58}
+                    radius={10}
+                    backgroundColor={isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.08)"}
+                    textColor={isDark ? "rgba(255,255,255,0.5)" : "rgba(16,17,20,0.5)"}
+                  />
 
-                    <View style={styles.itemBody}>
-                      <Text style={styles.itemName} numberOfLines={2}>
-                        {item.name}
-                      </Text>
-                      <Text style={styles.itemBrand} numberOfLines={1}>
-                        {item.brand}
-                      </Text>
-                      <View style={styles.itemActions}>
-                        <Pressable style={styles.smallButton} onPress={() => onMove(item.barcode)}>
-                          <Ionicons name="folder-open-outline" size={14} color={theme.primary} />
-                        </Pressable>
-                        <Pressable style={styles.trashButton} onPress={() => removeFavorite(item.barcode)}>
-                          <Ionicons name="trash-outline" size={16} color={theme.error} />
-                        </Pressable>
-                      </View>
+                  <View style={styles.itemBody}>
+                    <Text style={[styles.itemName, { color: isDark ? "#fff" : "#101114" }]} numberOfLines={2}>
+                      {item.name}
+                    </Text>
+                    <Text
+                      style={[styles.itemBrand, { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(16,17,20,0.65)" }]}
+                      numberOfLines={1}
+                    >
+                      {item.brand}
+                    </Text>
+                    <View style={styles.itemActions}>
+                      <Pressable style={styles.smallButton} onPress={() => onMove(item.barcode)}>
+                        <Text style={styles.smallButtonText}>Catégorie</Text>
+                      </Pressable>
+                      <Pressable style={styles.trashButton} onPress={() => removeFavorite(item.barcode)}>
+                        <Ionicons name="trash-outline" size={16} color="#f87171" />
+                      </Pressable>
                     </View>
-
-                  <View style={[styles.nutri, nutriStyle(item.nutriScore)]}>
-                    {normalizeNutriGrade(item.nutriScore) ? (
-                      <Text style={styles.nutriText}>{normalizeNutriGrade(item.nutriScore)}</Text>
-                    ) : (
-                      <Text style={styles.nutriText}>—</Text>
-                    )}
                   </View>
-                  </Pressable>
-                );
-              })
+
+                  <NutriScoreBadge grade={item.nutriScore} shape="circle" size={32} textSize={14} />
+                </Pressable>
+              ))
             )}
           </View>
         ))}
@@ -234,147 +209,59 @@ export default function FavoritesScreen({ navigation }: Props) {
   );
 }
 
-function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
-  return StyleSheet.create({
-    page: { flex: 1, backgroundColor: theme.background },
-    contentContainer: {
-      padding: theme.layout.screenPadding,
-      paddingBottom: theme.spacing.xxl,
-      gap: theme.spacing.lg,
-    },
-    title: {
-      color: theme.text,
-      fontSize: theme.fontSizes.xxxl,
-      fontWeight: theme.fontWeights.heavy,
-      letterSpacing: -0.5,
-    },
-    addRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing.md },
-    input: {
-      flex: 1,
-      backgroundColor: theme.card,
-      borderColor: theme.border,
-      color: theme.text,
-      borderRadius: theme.borderRadius.lg,
-      borderWidth: 1,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      fontSize: theme.fontSizes.md,
-      fontWeight: theme.fontWeights.semiBold,
-    },
-    addButton: {
-      backgroundColor: theme.primary,
-      borderRadius: theme.borderRadius.lg,
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
-      elevation: 4,
-    },
-    addButtonText: {
-      color: theme.textInverse,
-      fontWeight: theme.fontWeights.extraBold,
-      fontSize: theme.fontSizes.lg,
-    },
-    empty: { color: theme.textMuted, textAlign: "center", marginTop: 8, fontSize: theme.fontSizes.md },
-
-    section: {
-      backgroundColor: theme.card,
-      borderColor: theme.border,
-      borderWidth: 1,
-      borderRadius: theme.borderRadius.xl,
-      padding: theme.spacing.lg,
-      gap: theme.spacing.md,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
-      shadowRadius: 10,
-      elevation: 2,
-    },
-    sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-    sectionRight: { flexDirection: "row", alignItems: "center", gap: theme.spacing.sm },
-    countText: {
-      color: theme.textMuted,
-      fontSize: theme.fontSizes.md,
-      fontWeight: theme.fontWeights.extraBold,
-      minWidth: 20,
-      textAlign: "right",
-    },
-    iconAction: { paddingHorizontal: 6, paddingVertical: 4 },
-    sectionTitle: {
-      color: theme.text,
-      fontSize: theme.fontSizes.lg,
-      fontWeight: theme.fontWeights.heavy,
-      letterSpacing: -0.2,
-    },
-    muted: { color: theme.textMuted, fontSize: theme.fontSizes.base, fontWeight: theme.fontWeights.medium },
-
-    item: {
-      backgroundColor: theme.background,
-      borderColor: theme.border,
-      borderRadius: theme.borderRadius.lg,
-      borderWidth: 1,
-      padding: theme.spacing.md,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.md,
-    },
-    image: {
-      width: 64,
-      height: 64,
-      borderRadius: theme.borderRadius.md,
-      backgroundColor: theme.imagePlaceholder,
-    },
-    imagePlaceholder: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    itemBody: { flex: 1, gap: theme.spacing.xs },
-    itemName: {
-      color: theme.text,
-      fontWeight: theme.fontWeights.extraBold,
-      fontSize: theme.fontSizes.md,
-    },
-    itemBrand: {
-      color: theme.textMuted,
-      fontSize: theme.fontSizes.sm,
-      fontWeight: theme.fontWeights.medium,
-    },
-    itemActions: {
-      flexDirection: "row",
-      gap: theme.spacing.sm,
-      marginTop: theme.spacing.xs,
-    },
-    smallButton: {
-      backgroundColor: theme.primarySoft,
-      borderRadius: theme.borderRadius.sm,
-      paddingVertical: 6,
-      paddingHorizontal: 12,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    trashButton: {
-      backgroundColor: theme.errorSoft,
-      borderRadius: theme.borderRadius.sm,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    nutri: {
-      width: 36,
-      height: 36,
-      borderRadius: theme.borderRadius.pill,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    nutriText: {
-      color: theme.textInverse,
-      fontWeight: theme.fontWeights.heavy,
-      fontSize: theme.fontSizes.sm,
-      textTransform: "uppercase",
-    },
-  });
-}
+const styles = StyleSheet.create({
+  page: { flex: 1 },
+  content: { padding: 14, paddingBottom: 28, gap: 12 },
+  title: { fontSize: 24, fontWeight: "800" },
+  addRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  input: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  addButton: {
+    backgroundColor: "#2563eb",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  addButtonText: { color: "#fff", fontWeight: "700" },
+  empty: { textAlign: "center", marginTop: 8 },
+  section: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  countText: { fontSize: 13, fontWeight: "700", minWidth: 20, textAlign: "right" },
+  iconAction: { paddingHorizontal: 4, paddingVertical: 2 },
+  sectionTitle: { fontSize: 16, fontWeight: "800" },
+  muted: { fontSize: 13 },
+  item: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  itemBody: { flex: 1, gap: 3 },
+  itemName: { fontWeight: "700", fontSize: 14 },
+  itemBrand: { fontSize: 13 },
+  itemActions: { flexDirection: "row", gap: 8, marginTop: 4 },
+  smallButton: {
+    backgroundColor: "rgba(37,99,235,0.18)",
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+  },
+  smallButtonText: { color: "#93c5fd", fontSize: 12, fontWeight: "700" },
+  trashButton: {
+    backgroundColor: "rgba(239,68,68,0.2)",
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

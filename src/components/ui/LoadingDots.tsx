@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
-import { useAppTheme } from "../context/ThemeContext";
+import { useAppTheme } from "../../context/ThemeContext";
 
 type Props = {
   size?: number;

@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -10,14 +9,14 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
 
-import type { HistoryStackParamList } from "../navigation/types";
-import type { HistoryItem } from "../types/history";
-import { getHistory } from "../utils/historyStorage";
-import { OFFSearch } from "../utils/api";
-import { useDebounce } from "../hooks/useDebounce";
-import { useAppTheme } from "../context/ThemeContext";
+import type { HistoryStackParamList } from "../../navigation/types";
+import type { HistoryItem } from "../../types/history";
+import { getHistory } from "../../utils/historyStorage";
+import { OFFSearch } from "../../utils/api";
+import { useDebounce } from "../../hooks/useDebounce";
+import PillButton from "../ui/PillButton";
+import ProductThumbnail from "../ui/ProductThumbnail";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "ComparePick">;
 
@@ -36,15 +35,14 @@ type UnifiedItem =
   | { kind: "history"; barcode: string; name?: string; brand?: string; imageUrl?: string }
   | { kind: "api"; barcode: string; name?: string; brand?: string; imageUrl?: string };
 
-export default function ComparePickScreen({ navigation, route }: Props) {
-  const { theme } = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+export default function ComparePick({ navigation, route }: Props) {
   const { slot, leftBarcode, rightBarcode } = route.params;
 
   const [q, setQ] = useState("");
   const debouncedQ = useDebounce(q, 400);
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
+
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiHits, setApiHits] = useState<OFFSearchHit[]>([]);
@@ -148,25 +146,27 @@ export default function ComparePickScreen({ navigation, route }: Props) {
   return (
     <View style={styles.page}>
       <Text style={styles.title}>Choisir un produit</Text>
-      <Text style={styles.muted}>Recherche dans l’historique + Open Food Facts</Text>
+      <Text style={styles.muted}>
+        Recherche dans l’historique + Open Food Facts
+      </Text>
 
       <View style={styles.searchBox}>
         <TextInput
           value={q}
           onChangeText={setQ}
           placeholder="Nom, marque ou code-barres…"
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor="rgba(255,255,255,0.45)"
           style={styles.input}
           autoCorrect={false}
           autoCapitalize="none"
         />
       </View>
 
-      <View style={styles.statusContainer}>
+      <View style={{ minHeight: 22 }}>
         {apiLoading ? (
           <View style={styles.inlineRow}>
             <ActivityIndicator />
-            <Text style={styles.loadingText}>Recherche…</Text>
+            <Text style={[styles.muted, { marginLeft: 10 }]}>Recherche…</Text>
           </View>
         ) : apiError ? (
           <Text style={styles.error}>{apiError}</Text>
@@ -178,11 +178,11 @@ export default function ComparePickScreen({ navigation, route }: Props) {
       <FlatList
         data={unified}
         keyExtractor={(item) => `${item.kind}:${item.barcode}`}
-        contentContainerStyle={styles.listContentContainer}
-        ItemSeparatorComponent={itemSeparator}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         ListEmptyComponent={
           showEmpty ? (
-            <View style={styles.emptyContainer}>
+            <View style={{ paddingTop: 22 }}>
               <Text style={styles.muted}>Aucun résultat.</Text>
             </View>
           ) : null
@@ -190,21 +190,16 @@ export default function ComparePickScreen({ navigation, route }: Props) {
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => pick(item.barcode)}>
             <View style={styles.row}>
-              <View style={styles.thumbWrap}>
-                {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.thumb} resizeMode="contain" />
-                ) : (
-                  <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
-                    {item.kind === "api" ? (
-                      <Ionicons name="fast-food-outline" size={24} color={theme.imagePlaceholderText} />
-                    ) : (
-                      <Text style={styles.muted}>—</Text>
-                    )}
-                  </View>
-                )}
-              </View>
+              <ProductThumbnail
+                imageUrl={item.imageUrl}
+                size={56}
+                radius={14}
+                placeholderText={item.kind === "api" ? "OFF" : "—"}
+                backgroundColor="rgba(255,255,255,0.05)"
+                textColor="rgba(255,255,255,0.7)"
+              />
 
-              <View style={styles.flexOne}>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.name} numberOfLines={1}>
                   {item.name ?? "Produit"}
                 </Text>
@@ -212,14 +207,14 @@ export default function ComparePickScreen({ navigation, route }: Props) {
                   {item.brand ?? "Marque"} • {item.barcode}
                 </Text>
 
-                <Text style={styles.sourceText}>
-                  {item.kind === "history" ? "Historique" : "Open Food Facts"}
-                </Text>
+                {item.kind === "history" ? (
+                  <Text style={[styles.muted, { marginTop: 4 }]}>Historique</Text>
+                ) : (
+                  <Text style={[styles.muted, { marginTop: 4 }]}>Open Food Facts</Text>
+                )}
               </View>
 
-              <View style={styles.pill}>
-                <Text style={styles.pillText}>Choisir</Text>
-              </View>
+              <PillButton label="Choisir" onPress={() => pick(item.barcode)} />
             </View>
           </Pressable>
         )}
@@ -228,105 +223,32 @@ export default function ComparePickScreen({ navigation, route }: Props) {
   );
 }
 
-function itemSeparator() {
-  return <View style={separatorStyles.separator} />;
-}
+const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: "#0b0b0c", padding: 16, gap: 12 },
+  title: { color: "#fff", fontSize: 22, fontWeight: "900" },
+  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
+  error: { color: "#ffb4b4", fontSize: 13, fontWeight: "800" },
 
-const separatorStyles = StyleSheet.create({
-  separator: { height: 10 },
+  searchBox: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  input: { color: "#fff", fontWeight: "700" },
+
+  inlineRow: { flexDirection: "row", alignItems: "center" },
+
+  card: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  row: { flexDirection: "row", gap: 12, alignItems: "center" },
+
+  name: { color: "#fff", fontSize: 14, fontWeight: "900" },
 });
-
-function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
-  return StyleSheet.create({
-    page: {
-      flex: 1,
-      padding: 16,
-      gap: 14,
-      backgroundColor: theme.background,
-    },
-    title: {
-      color: theme.text,
-      fontSize: theme.fontSizes.xxl,
-      fontWeight: theme.fontWeights.heavy,
-      letterSpacing: -0.5,
-    },
-    muted: {
-      color: theme.textMuted,
-      fontSize: theme.fontSizes.sm,
-    },
-    error: {
-      color: theme.error,
-      fontSize: theme.fontSizes.sm,
-      fontWeight: theme.fontWeights.extraBold,
-    },
-
-    searchBox: {
-      backgroundColor: theme.card,
-      borderColor: theme.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 6,
-      elevation: 2,
-    },
-    input: {
-      color: theme.text,
-      fontWeight: theme.fontWeights.bold,
-      fontSize: theme.fontSizes.md,
-    },
-
-    statusContainer: { minHeight: 22 },
-    inlineRow: { flexDirection: "row", alignItems: "center" },
-    loadingText: { marginLeft: 10, color: theme.textMuted, fontSize: theme.fontSizes.sm },
-
-    listContentContainer: { paddingBottom: 16 },
-    emptyContainer: { paddingTop: 22 },
-
-    card: {
-      backgroundColor: theme.card,
-      borderColor: theme.border,
-      borderRadius: 20,
-      padding: 12,
-      borderWidth: 1,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 6,
-      elevation: 2,
-    },
-    row: { flexDirection: "row", gap: 14, alignItems: "center" },
-    flexOne: { flex: 1 },
-
-    thumbWrap: {
-      width: 62,
-      height: 62,
-      borderRadius: 14,
-      overflow: "hidden",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.imagePlaceholder,
-    },
-    thumb: { width: "95%", height: "95%" },
-    thumbPlaceholder: {},
-
-    name: { color: theme.text, fontSize: theme.fontSizes.md, fontWeight: theme.fontWeights.heavy },
-    sourceText: { marginTop: 4, color: theme.textMuted, fontSize: theme.fontSizes.sm },
-
-    pill: {
-      backgroundColor: theme.primary,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: theme.borderRadius.pill,
-    },
-    pillText: {
-      color: theme.textInverse,
-      fontWeight: theme.fontWeights.heavy,
-      fontSize: theme.fontSizes.xs,
-      letterSpacing: 0.5,
-    },
-  });
-}
