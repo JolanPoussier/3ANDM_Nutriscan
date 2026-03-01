@@ -1,3 +1,5 @@
+import { useFocusEffect } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,12 +11,15 @@ import {
   Text,
   View,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { HistoryStackParamList } from "../navigation/types";
 import type { HistoryItem } from "../types/history";
 import { getHistory, removeFromHistory } from "../utils/historyStorage";
+import {
+  nutriGradeToScore,
+  nutriScoreNumberToGrade,
+  nutriScoreToGrade,
+} from "../utils/nutriScore";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "Historique">;
 
@@ -33,6 +38,27 @@ function formatDate(ts: number) {
   return `${d.toLocaleDateString()} • ${d.toLocaleTimeString().slice(0, 5)}`;
 }
 
+//Permets de renvoyer le timestamp du lundi de la semaine en cours
+function getWeekStartTimestamp(timestamp: number) {
+  const d = new Date(timestamp);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + diff);
+  return d.getTime();
+}
+
+function formatWeekLabel(timestamp: number) {
+  const d = new Date(timestamp);
+  return `${d.getDate()}/${d.getMonth() + 1}`;
+}
+
+type WeeklyScorePoint = {
+  key: string;
+  label: string;
+  average: number;
+};
+
 export default function HistoryScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<HistoryItem[]>([]);
@@ -50,10 +76,74 @@ export default function HistoryScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
-  const empty = useMemo(() => !loading && items.length === 0, [loading, items.length]);
+  const scannedCount = items.length;
+
+  const scoredItems = useMemo(
+    () =>
+      items
+        .map((item) => ({ ...item, score: nutriGradeToScore(item.nutriScore) }))
+        .filter((item) => item.score !== null) as Array<
+        HistoryItem & { score: number }
+      >,
+    [items],
+  );
+
+  const averageScore = useMemo(() => {
+    if (scoredItems.length === 0) return null;
+    const sum = scoredItems.reduce((acc, item) => acc + item.score, 0);
+    return sum / scoredItems.length;
+  }, [scoredItems]);
+
+  const globalGrade = useMemo(
+    () => nutriScoreToGrade(averageScore ?? undefined),
+    [averageScore],
+  );
+
+  const bestGrade = useMemo(() => {
+    if (scoredItems.length === 0) return null;
+    const maxScore = scoredItems.reduce(
+      (max, item) => Math.max(max, item.score),
+      1,
+    );
+    return nutriScoreNumberToGrade(maxScore);
+  }, [scoredItems]);
+
+  const worstGrade = useMemo(() => {
+    if (scoredItems.length === 0) return null;
+    const minScore = scoredItems.reduce(
+      (min, item) => Math.min(min, item.score),
+      5,
+    );
+    return nutriScoreNumberToGrade(minScore);
+  }, [scoredItems]);
+
+  const weeklyScores = useMemo<WeeklyScorePoint[]>(() => {
+    const buckets = new Map<number, { total: number; count: number }>();
+    scoredItems.forEach((item) => {
+      const weekStart = getWeekStartTimestamp(item.scannedAt);
+      const existing = buckets.get(weekStart) ?? { total: 0, count: 0 };
+      existing.total += item.score;
+      existing.count += 1;
+      buckets.set(weekStart, existing);
+    });
+
+    return [...buckets.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .slice(-8)
+      .map(([weekStart, value]) => ({
+        key: String(weekStart),
+        label: formatWeekLabel(weekStart),
+        average: value.total / value.count,
+      }));
+  }, [scoredItems]);
+
+  const chartMax = useMemo(
+    () => Math.max(5, ...weeklyScores.map((point) => point.average)),
+    [weeklyScores],
+  );
 
   const onDelete = useCallback((barcode: string) => {
     Alert.alert("Supprimer", "Retirer ce produit de l'historique ?", [
@@ -78,34 +168,115 @@ export default function HistoryScreen({ navigation }: Props) {
     );
   }
 
-  if (empty) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Historique</Text>
-        <Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>
-          Aucun scan pour l’instant.
-          {"\n"}Scanne un produit pour le retrouver ici.
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.page}>
       <FlatList
         data={items}
         keyExtractor={(item) => item.barcode}
         contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+        ListHeaderComponent={
+          <View style={styles.dashboardCard}>
+            <Text style={styles.dashboardTitle}>
+              Score nutritionnel personnel
+            </Text>
+            <View style={styles.globalScoreRow}>
+              <Text style={styles.globalLabel}>Nutri-Score global</Text>
+              <View
+                style={[
+                  styles.globalBadge,
+                  { backgroundColor: nutriColor(globalGrade ?? undefined) },
+                ]}
+              >
+                <Text style={styles.globalBadgeText}>{globalGrade ?? "—"}</Text>
+              </View>
+            </View>
+            <Text style={styles.dashboardMuted}>
+              {averageScore !== null
+                ? `Moyenne: ${averageScore.toFixed(2)} / 5`
+                : "Aucun Nutri-Score exploitable pour calculer la moyenne."}
+            </Text>
+
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Produits scannés</Text>
+                <Text style={styles.statValue}>{scannedCount}</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Meilleur score</Text>
+                <Text style={styles.statValue}>{bestGrade ?? "—"}</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Moins bon score</Text>
+                <Text style={styles.statValue}>{worstGrade ?? "—"}</Text>
+              </View>
+            </View>
+
+            <View style={styles.chartWrap}>
+              <Text style={styles.chartTitle}>Evolution hebdomadaire</Text>
+              {weeklyScores.length === 0 ? (
+                <Text style={styles.dashboardMuted}>
+                  Pas assez de données pour tracer l'évolution.
+                </Text>
+              ) : (
+                <View>
+                  <View style={styles.chartBarsRow}>
+                    {weeklyScores.map((point) => (
+                      <View key={point.key} style={styles.barColumn}>
+                        <View
+                          style={[
+                            styles.bar,
+                            {
+                              height: `${Math.max(8, (point.average / chartMax) * 100)}%`,
+                              backgroundColor: nutriColor(
+                                nutriScoreToGrade(point.average) ?? undefined,
+                              ),
+                            },
+                          ]}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.chartLabelsRow}>
+                    {weeklyScores.map((point) => (
+                      <Text
+                        key={`${point.key}-label`}
+                        style={styles.chartLabel}
+                      >
+                        {point.label}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        }
+        ListHeaderComponentStyle={{ marginBottom: 12 }}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.title}>Historique</Text>
+            <Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>
+              Aucun scan pour l’instant.
+              {"\n"}Scanne un produit pour alimenter ton score.
+            </Text>
+          </View>
+        }
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
-            onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
+            onPress={() =>
+              navigation.navigate("ProductDetails", { barcode: item.barcode })
+            }
           >
             <View style={styles.row}>
               <View style={styles.thumbWrap}>
                 {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.thumb} resizeMode="contain" />
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.thumb}
+                    resizeMode="contain"
+                  />
                 ) : (
                   <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
                     <Text style={styles.thumbText}>—</Text>
@@ -118,13 +289,28 @@ export default function HistoryScreen({ navigation }: Props) {
                   {item.name ?? "Produit inconnu"}
                 </Text>
                 <Text style={styles.muted} numberOfLines={1}>
-                  {(item.brand ?? "Marque inconnue")} • {formatDate(item.scannedAt)}
+                  {item.brand ?? "Marque inconnue"} •{" "}
+                  {formatDate(item.scannedAt)}
                 </Text>
 
-                <View style={{ marginTop: 8, flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <View style={[styles.badge, { backgroundColor: nutriColor(item.nutriScore) }]}>
+                <View
+                  style={{
+                    marginTop: 8,
+                    flexDirection: "row",
+                    gap: 8,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: nutriColor(item.nutriScore) },
+                    ]}
+                  >
                     <Text style={styles.badgeText}>
-                      Nutri {item.nutriScore ? item.nutriScore.toUpperCase() : "—"}
+                      Nutri{" "}
+                      {item.nutriScore ? item.nutriScore.toUpperCase() : "—"}
                     </Text>
                   </View>
                   <Text style={styles.muted}>barcode: {item.barcode}</Text>
@@ -132,7 +318,11 @@ export default function HistoryScreen({ navigation }: Props) {
 
                 <Pressable
                   style={styles.compareBtn}
-                  onPress={() => navigation.navigate("CompareHub", { leftBarcode: item.barcode })}
+                  onPress={() =>
+                    navigation.navigate("CompareHub", {
+                      leftBarcode: item.barcode,
+                    })
+                  }
                 >
                   <Text style={styles.compareText}>Comparer</Text>
                 </Pressable>
@@ -155,10 +345,108 @@ export default function HistoryScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0b0c" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#0b0b0c" },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+    backgroundColor: "#0b0b0c",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+  },
 
   title: { color: "#fff", fontSize: 22, fontWeight: "800" },
   muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
+  dashboardMuted: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
+
+  dashboardCard: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    gap: 10,
+  },
+  dashboardTitle: { color: "#fff", fontSize: 17, fontWeight: "900" },
+  globalScoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  globalLabel: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  globalBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  globalBadgeText: { color: "#fff", fontWeight: "900", fontSize: 18 },
+
+  statsRow: { flexDirection: "row", gap: 8 },
+  statCard: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    padding: 8,
+    gap: 4,
+  },
+  statLabel: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  statValue: { color: "#fff", fontSize: 18, fontWeight: "900" },
+
+  chartWrap: {
+    marginTop: 4,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    padding: 10,
+    gap: 8,
+  },
+  chartTitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  chartBarsRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    height: 96,
+    gap: 6,
+  },
+  barColumn: {
+    flex: 1,
+    height: "100%",
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  bar: { width: "100%", borderRadius: 6 },
+  chartLabelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 6,
+  },
+  chartLabel: {
+    flex: 1,
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 10,
+    textAlign: "center",
+  },
 
   card: {
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -195,7 +483,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  deleteText: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 14 },
+  deleteText: {
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "900",
+    fontSize: 14,
+  },
 
   compareBtn: {
     marginTop: 10,
