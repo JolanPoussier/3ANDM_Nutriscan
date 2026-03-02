@@ -7,6 +7,7 @@ import type { HistoryStackParamList } from "../navigation/types";
 import type { OFFProductResponse, OFFProduct } from "../types/off";
 import { OFFFetch } from "../utils/api";
 import { useAppTheme } from "../context/ThemeContext";
+import { normalizeNutriGrade } from "../utils/nutriScore";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "Comparator">;
 
@@ -240,9 +241,7 @@ export default function ComparatorScreen({ route }: Props) {
 
           const leftText =
             m.key === "nutriscore"
-              ? left.nutriscore_grade
-                ? left.nutriscore_grade.toUpperCase()
-                : "—"
+              ? normalizeNutriGrade(left.nutriscore_grade) ?? "—"
               : m.key === "nova"
                 ? fmtNumber(lv ?? undefined)
                 : m.unit === "kcal"
@@ -251,9 +250,7 @@ export default function ComparatorScreen({ route }: Props) {
 
           const rightText =
             m.key === "nutriscore"
-              ? right.nutriscore_grade
-                ? right.nutriscore_grade.toUpperCase()
-                : "—"
+              ? normalizeNutriGrade(right.nutriscore_grade) ?? "—"
               : m.key === "nova"
                 ? fmtNumber(rv ?? undefined)
                 : m.unit === "kcal"
@@ -307,7 +304,7 @@ export default function ComparatorScreen({ route }: Props) {
 function ProductHeader({ product, sideLabel }: { product: OFFProduct; sideLabel: string }) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const grade = product.nutriscore_grade?.toUpperCase() ?? "—";
+  const grade = normalizeNutriGrade(product.nutriscore_grade) ?? "—";
   return (
     <View style={styles.headerCard}>
       <Text style={styles.sideLabel}>{sideLabel}</Text>
