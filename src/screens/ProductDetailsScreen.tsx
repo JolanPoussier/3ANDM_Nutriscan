@@ -16,6 +16,11 @@ import type { OFFProductResponse, OFFProduct } from "../types/off";
 import type { ProductDetailsParams, HistoryStackParamList } from "../navigation/types";
 import { useFavorites } from "../context/FavoritesContext";
 
+import { getPreferences } from "../utils/preferencesStorage";
+import type { Preferences } from "../types/preferences";
+import { ALLERGENS, DIETS } from "../types/preferences";
+import { checkDiet, detectAllergens } from "../utils/productRules";
+
 type Props = {
   route: RouteProp<Record<string, ProductDetailsParams>, string>;
   navigation: NativeStackNavigationProp<HistoryStackParamList>;
@@ -36,13 +41,23 @@ function fmt(n?: number, unit = "g") {
   return `${n} ${unit}`;
 }
 
+function allergenLabel(key: string) {
+  return ALLERGENS.find((a) => a.key === key)?.label ?? key;
+}
+
 export default function ProductDetailsScreen({ route, navigation }: Props) {
   const barcode = route.params?.barcode;
   const { categories, addOrUpdateFavorite, removeFavorite, isFavorite, getFavorite } = useFavorites();
 
   const [loading, setLoading] = useState(true);
+  const [prefs, setPrefs] = useState<Preferences | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [product, setProduct] = useState<OFFProduct | null>(null);
+
+  useEffect(() => {
+    getPreferences().then(setPrefs).catch(() => setPrefs(null));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,79 +140,107 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
 
   const grade = product.nutriscore_grade?.toUpperCase();
 
+  
+  const allergensHit = prefs ? detectAllergens(product, prefs) : [];
+  const dietLabel = prefs ? (DIETS.find((d) => d.key === prefs.diet)?.label ?? "Aucun") : "Aucun";
+  const dietStatus = prefs ? checkDiet(product, prefs.diet) : { ok: true as const };
+
+  const showAlert =
+    (prefs && allergensHit.length > 0) ||
+    (prefs && prefs.diet !== "none" && dietStatus.ok !== true);
+
+  const allergensText =
+    allergensHit.length > 0 ? allergensHit.map(allergenLabel).join(", ") : "";
+
   return (
-    <>
-      <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{headerTitle}</Text>
-        <Text style={styles.muted}>
-          {(product.brands ?? "Marque inconnue")} • {(product.quantity ?? "Quantité inconnue")}
-        </Text>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>{headerTitle}</Text>
+      <Text style={styles.muted}>
+        {(product.brands ?? "Marque inconnue")} • {(product.quantity ?? "Quantité inconnue")}
+      </Text>
 
-        <View style={styles.hero}>
-          {product.image_url ? (
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="contain" />
-            </View>
-          ) : (
-            <View style={[styles.imageContainer, styles.imagePlaceholder]}>
-              <Text style={styles.muted}>Pas d’image</Text>
-            </View>
-          )}
 
-          <View style={styles.badges}>
-            <View style={[styles.badge, { backgroundColor: nutriColor(product.nutriscore_grade) }]}>
-              <Text style={styles.badgeText}>Nutri-Score {grade ?? "—"}</Text>
-            </View>
+      {prefs && showAlert ? (
+        <View style={styles.alertBox}>
+          <Text style={styles.alertTitle}>⚠️ Attention</Text>
 
-            <View style={[styles.badge, styles.badgeSoft]}>
-              <Text style={styles.badgeTextSoft}>NOVA {product.nova_group ?? "—"}</Text>
-            </View>
+          {allergensHit.length > 0 ? (
+            <Text style={styles.alertText}>Allergènes détectés : {allergensText}</Text>
+          ) : null}
+
+          {prefs.diet !== "none" && dietStatus.ok !== true ? (
+            <Text style={styles.alertText}>
+              Régime ({dietLabel}) :{" "}
+              {dietStatus.ok === "unknown" ? `info inconnue — ${dietStatus.reason}` : dietStatus.reason}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.hero}>
+        {product.image_url ? (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="contain" />
+          </View>
+        ) : (
+          <View style={[styles.imageContainer, styles.imagePlaceholder]}>
+            <Text style={styles.muted}>Pas d’image</Text>
+          </View>
+        )}
+
+        <View style={styles.badges}>
+          <View style={[styles.badge, { backgroundColor: nutriColor(product.nutriscore_grade) }]}>
+            <Text style={styles.badgeText}>Nutri-Score {grade ?? "—"}</Text>
           </View>
 
-          <View style={styles.favoriteRow}>
-            <Pressable
-              style={[styles.heartButton, favoriteActive ? styles.heartButtonActive : null]}
-              onPress={onFavoritePress}
-            >
-              <Text style={styles.heartIcon}>{favoriteActive ? "♥" : "♡"}</Text>
-            </Pressable>
-            {favoriteCategoryName ? (
-              <Text style={styles.favoriteSubText}>Catégorie: {favoriteCategoryName}</Text>
-            ) : null}
+          <View style={[styles.badge, styles.badgeSoft]}>
+            <Text style={styles.badgeTextSoft}>NOVA {product.nova_group ?? "—"}</Text>
           </View>
         </View>
 
-        <Pressable
-          style={styles.cta}
-          onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
-        >
-          <Text style={styles.ctaText}>Comparer avec un autre produit</Text>
-        </Pressable>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Nutrition (pour 100g)</Text>
-
-          <Row label="Calories" value={fmt(product.nutriments?.["energy-kcal_100g"], "kcal")} />
-          <Row label="Graisses" value={fmt(product.nutriments?.fat_100g)} />
-          <Row label="Saturées" value={fmt(product.nutriments?.["saturated-fat_100g"])} />
-          <Row label="Glucides" value={fmt(product.nutriments?.carbohydrates_100g)} />
-          <Row label="Sucres" value={fmt(product.nutriments?.sugars_100g)} />
-          <Row label="Fibres" value={fmt(product.nutriments?.fiber_100g)} />
-          <Row label="Protéines" value={fmt(product.nutriments?.proteins_100g)} />
-          <Row label="Sel" value={fmt(product.nutriments?.salt_100g)} />
+        <View style={styles.favoriteRow}>
+          <Pressable
+            style={[styles.heartButton, favoriteActive ? styles.heartButtonActive : null]}
+            onPress={onFavoritePress}
+          >
+            <Text style={styles.heartIcon}>{favoriteActive ? "♥" : "♡"}</Text>
+          </Pressable>
+          {favoriteCategoryName ? (
+            <Text style={styles.favoriteSubText}>Catégorie: {favoriteCategoryName}</Text>
+          ) : null}
         </View>
+      </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ingrédients</Text>
-          <Text style={styles.body}>{product.ingredients_text?.trim() || "—"}</Text>
-        </View>
+      <Pressable
+        style={styles.cta}
+        onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
+      >
+        <Text style={styles.ctaText}>Comparer avec un autre produit</Text>
+      </Pressable>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Allergènes (tags)</Text>
-          <Text style={styles.body}>{product.allergens_tags?.join(", ") || "—"}</Text>
-        </View>
-      </ScrollView>
-    </>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Nutrition (pour 100g)</Text>
+
+        <Row label="Calories" value={fmt(product.nutriments?.["energy-kcal_100g"], "kcal")} />
+        <Row label="Graisses" value={fmt(product.nutriments?.fat_100g)} />
+        <Row label="Saturées" value={fmt(product.nutriments?.["saturated-fat_100g"])} />
+        <Row label="Glucides" value={fmt(product.nutriments?.carbohydrates_100g)} />
+        <Row label="Sucres" value={fmt(product.nutriments?.sugars_100g)} />
+        <Row label="Fibres" value={fmt(product.nutriments?.fiber_100g)} />
+        <Row label="Protéines" value={fmt(product.nutriments?.proteins_100g)} />
+        <Row label="Sel" value={fmt(product.nutriments?.salt_100g)} />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Ingrédients</Text>
+        <Text style={styles.body}>{product.ingredients_text?.trim() || "—"}</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Allergènes (tags)</Text>
+        <Text style={styles.body}>{product.allergens_tags?.join(", ") || "—"}</Text>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -219,6 +262,16 @@ const styles = StyleSheet.create({
   title: { color: "#fff", fontSize: 22, fontWeight: "800" },
   muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
   body: { color: "rgba(255,255,255,0.85)", fontSize: 14, lineHeight: 20 },
+
+  alertBox: {
+    backgroundColor: "rgba(214,69,65,0.18)",
+    borderColor: "rgba(214,69,65,0.35)",
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+  },
+  alertTitle: { color: "#fff", fontWeight: "900", marginBottom: 6 },
+  alertText: { color: "rgba(255,255,255,0.85)", fontWeight: "700", lineHeight: 18 },
 
   hero: { marginTop: 6, gap: 12 },
 
