@@ -35,7 +35,6 @@ function formatDate(ts: number) {
   return `${d.toLocaleDateString()} • ${d.toLocaleTimeString().slice(0, 5)}`;
 }
 
-// Permets de renvoyer le timestamp du lundi de la semaine en cours
 function getWeekStartTimestamp(timestamp: number) {
   const d = new Date(timestamp);
   const day = d.getDay();
@@ -45,15 +44,11 @@ function getWeekStartTimestamp(timestamp: number) {
   return d.getTime();
 }
 
-function formatWeekLabel(timestamp: number) {
-  const d = new Date(timestamp);
-  return `${d.getDate()}/${d.getMonth() + 1}`;
-}
-
-type WeeklyScorePoint = {
+type WeeklyDayPoint = {
   key: string;
   label: string;
   average: number;
+  count: number;
 };
 
 export default function HistoryScreen({ navigation }: Props) {
@@ -161,8 +156,13 @@ export default function HistoryScreen({ navigation }: Props) {
     return nutriScoreNumberToGrade(minScore);
   }, [scoredItems]);
 
-  const weeklyScores = useMemo<WeeklyScorePoint[]>(() => {
+  const weeklyScores = useMemo<WeeklyDayPoint[]>(() => {
+    const weeksToShow = 8;
+    const currentWeekStart = getWeekStartTimestamp(Date.now());
+    const dayMs = 24 * 60 * 60 * 1000;
+
     const buckets = new Map<number, { total: number; count: number }>();
+
     scoredItems.forEach((item) => {
       const weekStart = getWeekStartTimestamp(item.scannedAt);
       const existing = buckets.get(weekStart) ?? { total: 0, count: 0 };
@@ -171,32 +171,26 @@ export default function HistoryScreen({ navigation }: Props) {
       buckets.set(weekStart, existing);
     });
 
-    return [...buckets.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .slice(-8)
-      .map(([weekStart, value]) => ({
+    const firstWeekStart = currentWeekStart - (weeksToShow - 1) * 7 * dayMs;
+
+    return Array.from({ length: weeksToShow }).map((_, index) => {
+      const weekStart = firstWeekStart + index * 7 * dayMs;
+      const bucket = buckets.get(weekStart);
+      const date = new Date(weekStart);
+      return {
         key: String(weekStart),
-        label: formatWeekLabel(weekStart),
-        average: value.total / value.count,
-      }));
+        label: `${date.getDate()}/${date.getMonth() + 1}`,
+        average: bucket ? bucket.total / bucket.count : 0,
+        count: bucket?.count ?? 0,
+      };
+    });
   }, [scoredItems]);
 
-  const chartMax = useMemo(
-    () => Math.max(5, ...weeklyScores.map((point) => point.average)),
-    [weeklyScores],
-  );
+  const chartMax = 5;
 
   const globalBadgeDynamicStyle = useMemo(
     () => ({ backgroundColor: getNutriColor(theme, globalGrade ?? undefined) }),
     [globalGrade, theme],
-  );
-
-  const chartBarStyle = useCallback(
-    (average: number) => ({
-      height: `${Math.max(8, (average / chartMax) * 100)}%` as const,
-      backgroundColor: getNutriColor(theme, nutriScoreToGrade(average) ?? undefined),
-    }),
-    [chartMax, theme],
   );
 
   const itemBadgeStyle = useCallback(
@@ -219,6 +213,16 @@ export default function HistoryScreen({ navigation }: Props) {
       },
     ]);
   }, []);
+
+  const bestGradeBadgeStyle = useMemo(
+    () => ({ backgroundColor: getNutriColor(theme, bestGrade ?? undefined) }),
+    [bestGrade, theme],
+  );
+
+  const worstGradeBadgeStyle = useMemo(
+    () => ({ backgroundColor: getNutriColor(theme, worstGrade ?? undefined) }),
+    [worstGrade, theme],
+  );
 
   if (loading) {
     return (
@@ -252,40 +256,92 @@ export default function HistoryScreen({ navigation }: Props) {
 
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
+                <View style={styles.statTopRow}>
+                  <Ionicons name="scan-outline" size={14} color={theme.primary} />
+                </View>
                 <Text style={styles.statLabel}>Produits scannés</Text>
-                <Text style={styles.statValue}>{scannedCount}</Text>
+                <View style={[styles.scorePill, styles.scorePillNeutral]}>
+                  <Text style={[styles.scorePillText, styles.scorePillTextNeutral]}>{scannedCount}</Text>
+                </View>
               </View>
               <View style={styles.statCard}>
+                <View style={styles.statTopRow}>
+                  <Ionicons name="trending-up-outline" size={14} color={theme.nutriA} />
+                </View>
                 <Text style={styles.statLabel}>Meilleur score</Text>
-                <Text style={styles.statValue}>{bestGrade ?? "—"}</Text>
+                <View style={[styles.scorePill, bestGradeBadgeStyle]}>
+                  <Text style={styles.scorePillText}>{bestGrade ?? "—"}</Text>
+                </View>
               </View>
               <View style={styles.statCard}>
+                <View style={styles.statTopRow}>
+                  <Ionicons name="trending-down-outline" size={14} color={theme.nutriE} />
+                </View>
                 <Text style={styles.statLabel}>Moins bon score</Text>
-                <Text style={styles.statValue}>{worstGrade ?? "—"}</Text>
+                <View style={[styles.scorePill, worstGradeBadgeStyle]}>
+                  <Text style={styles.scorePillText}>{worstGrade ?? "—"}</Text>
+                </View>
               </View>
             </View>
 
             <View style={styles.chartWrap}>
-              <Text style={styles.chartTitle}>Evolution hebdomadaire</Text>
-              {weeklyScores.length === 0 ? (
+              <Text style={styles.chartTitle}>Diagramme hebdomadaire (8 dernières semaines)</Text>
+              {weeklyScores.every((point) => point.count === 0) ? (
                 <Text style={styles.dashboardMuted}>
-                  Pas assez de données pour tracer l'évolution.
+                  Pas assez de données pour tracer le diagramme.
                 </Text>
               ) : (
                 <View>
-                  <View style={styles.chartBarsRow}>
-                    {weeklyScores.map((point) => (
-                      <View key={point.key} style={styles.barColumn}>
-                        <View style={[styles.bar, chartBarStyle(point.average)]} />
-                      </View>
-                    ))}
+                  <View style={styles.chartMainRow}>
+                    <View style={styles.chartYAxis}>
+                      {[5, 4, 3, 2, 1].map((tick) => (
+                        <Text key={`tick-${tick}`} style={styles.yAxisLabel}>
+                          {tick}
+                        </Text>
+                      ))}
+                    </View>
+
+                    <View style={styles.chartBarsRow}>
+                      {weeklyScores.map((point) => {
+                        const barHeight = point.count > 0
+                          ? `${Math.max(10, (point.average / chartMax) * 100)}%`
+                          : "6%";
+
+                        return (
+                          <View key={point.key} style={styles.barColumn}>
+                            <Text style={styles.barValue}>
+                              {point.count > 0 ? point.average.toFixed(1) : "–"}
+                            </Text>
+                            <View style={styles.barTrack}>
+                              <View
+                                style={[
+                                  styles.bar,
+                                  {
+                                    height: barHeight as `${number}%`,
+                                    backgroundColor:
+                                      point.count > 0
+                                        ? getNutriColor(theme, nutriScoreToGrade(point.average) ?? undefined)
+                                        : theme.border,
+                                  },
+                                ]}
+                              />
+                            </View>
+                            <Text style={styles.chartLabel}>{point.label}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
                   </View>
-                  <View style={styles.chartLabelsRow}>
-                    {weeklyScores.map((point) => (
-                      <Text key={`${point.key}-label`} style={styles.chartLabel}>
-                        {point.label}
-                      </Text>
-                    ))}
+
+                  <View style={styles.chartLegendRow}>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: theme.primary }]} />
+                      <Text style={styles.legendText}>Moyenne Nutri-Score / semaine</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: theme.border }]} />
+                      <Text style={styles.legendText}>Aucun scan</Text>
+                    </View>
                   </View>
                 </View>
               )}
@@ -490,20 +546,50 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       borderColor: theme.border,
       borderRadius: theme.borderRadius.lg,
       borderWidth: 1,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.sm,
       gap: theme.spacing.xs,
       alignItems: "center",
+      justifyContent: "center",
+      minHeight: 112,
+    },
+    statTopRow: {
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 16,
+    },
+    scorePill: {
+      minWidth: 42,
+      minHeight: 34,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: theme.borderRadius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    scorePillNeutral: {
+      backgroundColor: theme.badgeSoft,
+    },
+    scorePillText: {
+      color: theme.textInverse,
+      fontSize: theme.fontSizes.mdPlus,
+      fontWeight: theme.fontWeights.heavy,
+      textTransform: "uppercase",
+    },
+    scorePillTextNeutral: {
+      color: theme.text,
     },
     statLabel: {
       color: theme.textMuted,
       fontSize: theme.fontSizes.xs,
       fontWeight: theme.fontWeights.bold,
       textTransform: "uppercase",
-    },
-    statValue: {
-      color: theme.text,
-      fontSize: theme.fontSizes.lg,
-      fontWeight: theme.fontWeights.heavy,
+      textAlign: "center",
+      width: "100%",
+      minHeight: 30,
+      textAlignVertical: "center",
     },
 
     chartWrap: {
@@ -520,35 +606,81 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       fontSize: theme.fontSizes.sm,
       fontWeight: theme.fontWeights.extraBold,
     },
-    chartBarsRow: {
+    chartMainRow: {
       flexDirection: "row",
       alignItems: "flex-end",
-      height: 110,
+      gap: theme.spacing.sm,
+    },
+    chartYAxis: {
+      height: 130,
+      justifyContent: "space-between",
+      paddingBottom: 22,
+    },
+    yAxisLabel: {
+      color: theme.textSoft,
+      fontSize: theme.fontSizes.xxs,
+      fontWeight: theme.fontWeights.bold,
+      textAlign: "right",
+      width: 14,
+    },
+    chartBarsRow: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "flex-end",
+      height: 130,
       gap: theme.spacing.sm,
     },
     barColumn: {
       flex: 1,
       height: "100%",
       justifyContent: "flex-end",
+      alignItems: "center",
+      gap: 4,
+    },
+    barValue: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xxs,
+      fontWeight: theme.fontWeights.bold,
+      minHeight: 12,
+    },
+    barTrack: {
+      width: "100%",
+      height: 92,
       borderRadius: theme.borderRadius.sm,
+      justifyContent: "flex-end",
+      backgroundColor: theme.neutralSoft,
       overflow: "hidden",
     },
     bar: {
       width: "100%",
       borderRadius: theme.borderRadius.sm,
     },
-    chartLabelsRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      gap: theme.spacing.sm,
-      marginTop: theme.spacing.xs,
-    },
     chartLabel: {
-      flex: 1,
       color: theme.textMuted,
       fontSize: theme.fontSizes.xxs,
       fontWeight: theme.fontWeights.semiBold,
       textAlign: "center",
+    },
+    chartLegendRow: {
+      marginTop: theme.spacing.sm,
+      flexDirection: "row",
+      gap: theme.spacing.md,
+      flexWrap: "wrap",
+    },
+    legendItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    legendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    legendText: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.xs,
+      fontWeight: theme.fontWeights.medium,
     },
 
     card: {
