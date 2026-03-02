@@ -2,19 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
-import { useAppTheme } from "../context/ThemeContext";
 
+import { useI18n } from "../context/I18nContext";
+import { useAppTheme } from "../context/ThemeContext";
+import ComparatorScreen from "../screens/ComparatorScreen";
+import CompareHubScreen from "../screens/CompareHubScreen";
+import ComparePickScreen from "../screens/ComparePickScreen";
 import FavoritesScreen from "../screens/FavoritesScreen";
 import HistoryScreen from "../screens/HistoryScreen";
 import ProductDetailsScreen from "../screens/ProductDetailsScreen";
 import ScannerScreen from "../screens/ScannerScreen";
 import SearchScreen from "../screens/SearchScreen";
 import SettingsScreen from "../screens/SettingsScreen";
-
-import { useI18n } from "../context/I18nContext";
-import ComparatorScreen from "../screens/ComparatorScreen";
-import CompareHubScreen from "../screens/CompareHubScreen";
-import ComparePickScreen from "../screens/ComparePickScreen";
 
 import type {
   FavoritesStackParamList,
@@ -190,33 +189,27 @@ function SettingsStackScreen() {
 
 export default function RootNavigator() {
   const { t } = useI18n();
-  const { mode } = useAppTheme();
-  const isDark = mode === "dark";
+  const { theme } = useAppTheme();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: isDark ? "#0b0b0c" : "#ffffff",
-          borderTopColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+          backgroundColor: theme.tabBackground,
+          borderTopColor: theme.borderSoft,
           borderTopWidth: 1,
           elevation: 0,
         },
-        tabBarActiveTintColor: "#10b981",
-        tabBarInactiveTintColor: isDark ? "#52525b" : "#a1a1aa",
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.tabInactive,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: any = "home";
-          if (route.name === "ScannerTab")
-            iconName = focused ? "scan" : "scan-outline";
-          else if (route.name === "SearchTab")
-            iconName = focused ? "search" : "search-outline";
-          else if (route.name === "FavoritesTab")
-            iconName = focused ? "heart" : "heart-outline";
-          else if (route.name === "HistoryTab")
-            iconName = focused ? "time" : "time-outline";
-          else if (route.name === "SettingsTab")
-            iconName = focused ? "settings" : "settings-outline";
+          if (route.name === "ScannerTab") iconName = focused ? "scan" : "scan-outline";
+          else if (route.name === "SearchTab") iconName = focused ? "search" : "search-outline";
+          else if (route.name === "FavoritesTab") iconName = focused ? "heart" : "heart-outline";
+          else if (route.name === "HistoryTab") iconName = focused ? "time" : "time-outline";
+          else if (route.name === "SettingsTab") iconName = focused ? "settings" : "settings-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}

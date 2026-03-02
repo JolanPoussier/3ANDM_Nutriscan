@@ -1,12 +1,15 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
+import { useAppTheme } from "../context/ThemeContext";
 
 type Props = {
   size?: number;
   color?: string;
 };
 
-export default function LoadingDots({ size = 8, color = "#ffffff" }: Props) {
+export default function LoadingDots({ size = 8, color }: Props) {
+  const { theme } = useAppTheme();
+  const dotColor = color ?? theme.textInverse;
   const a1 = useRef(new Animated.Value(0.35)).current;
   const a2 = useRef(new Animated.Value(0.35)).current;
   const a3 = useRef(new Animated.Value(0.35)).current;
@@ -48,9 +51,9 @@ export default function LoadingDots({ size = 8, color = "#ffffff" }: Props) {
 
   return (
     <View style={styles.row}>
-      <Animated.View style={[styles.dot, { width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity: a1 }]} />
-      <Animated.View style={[styles.dot, { width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity: a2 }]} />
-      <Animated.View style={[styles.dot, { width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity: a3 }]} />
+      <Animated.View style={[styles.dot, { width: size, height: size, borderRadius: size / 2, backgroundColor: dotColor, opacity: a1 }]} />
+      <Animated.View style={[styles.dot, { width: size, height: size, borderRadius: size / 2, backgroundColor: dotColor, opacity: a2 }]} />
+      <Animated.View style={[styles.dot, { width: size, height: size, borderRadius: size / 2, backgroundColor: dotColor, opacity: a3 }]} />
     </View>
   );
 }

@@ -22,9 +22,10 @@ import {
 import { getPreferences, setPreferences } from "../utils/preferencesStorage";
 
 export default function SettingsScreen() {
-  const { mode, setMode } = useAppTheme();
+  const { mode, setMode, theme } = useAppTheme();
   const { locale, setLocale, t } = useI18n();
   const isDark = mode === "dark";
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
@@ -39,11 +40,6 @@ export default function SettingsScreen() {
       }
     })();
   }, []);
-
-  const cardBg = isDark ? "rgba(255,255,255,0.08)" : "#ffffff";
-  const cardBorder = isDark ? "rgba(255,255,255,0.12)" : "rgba(16,17,20,0.1)";
-  const titleColor = isDark ? "#ffffff" : "#101114";
-  const subColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(16,17,20,0.65)";
 
   async function toggleAllergen(key: AllergenKey) {
     const next: Preferences = {
@@ -75,26 +71,12 @@ export default function SettingsScreen() {
   );
 
   return (
-    <ScrollView
-      style={[styles.page, { backgroundColor: isDark ? "#0b0b0c" : "#f7f7f8" }]}
-      contentContainerStyle={{ paddingBottom: 24 }}
-    >
-      <Text style={[styles.title, { color: titleColor }]}>
-        {t("preferences.title")}
-      </Text>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>{t("preferences.title")}</Text>
 
-      <View
-        style={[
-          styles.block,
-          { backgroundColor: cardBg, borderColor: cardBorder },
-        ]}
-      >
-        <Text style={[styles.blockTitle, { color: titleColor }]}>
-          {t("preferences.language.title")}
-        </Text>
-        <Text style={[styles.help, { color: subColor }]}>
-          {t("preferences.language.description")}
-        </Text>
+      <View style={[styles.block, theme.shadows.sm]}>
+        <Text style={styles.blockTitle}>{t("preferences.language.title")}</Text>
+        <Text style={styles.help}>{t("preferences.language.description")}</Text>
 
         <View style={styles.chips}>
           {(["fr", "en"] as const).map((lang) => {
@@ -103,28 +85,10 @@ export default function SettingsScreen() {
               <Pressable
                 key={lang}
                 onPress={() => changeLanguage(lang)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: active
-                      ? isDark
-                        ? "#ffffff"
-                        : "#101114"
-                      : isDark
-                        ? "rgba(255,255,255,0.08)"
-                        : "rgba(16,17,20,0.06)",
-                    borderColor: active ? "transparent" : cardBorder,
-                  },
-                ]}
+                style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
                 disabled={!prefsLoaded}
               >
-                <Text
-                  style={{
-                    color: active ? (isDark ? "#000" : "#fff") : titleColor,
-                    fontWeight: "900",
-                    fontSize: 12,
-                  }}
-                >
+                <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>
                   {t(`preferences.language.${lang}`)}
                 </Text>
               </Pressable>
@@ -133,49 +97,27 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View
-        style={[
-          styles.row,
-          { backgroundColor: cardBg, borderColor: cardBorder },
-        ]}
-      >
+      <View style={[styles.row, theme.shadows.sm]}>
         <View style={styles.texts}>
-          <Text style={[styles.label, { color: titleColor }]}>
-            {t("preferences.theme.darkMode")}
-          </Text>
-          <Text style={[styles.help, { color: subColor }]}>
-            {t("preferences.theme.description")}
-          </Text>
+          <Text style={styles.label}>{t("preferences.theme.darkMode")}</Text>
+          <Text style={styles.help}>{t("preferences.theme.description")}</Text>
         </View>
 
         <Switch
           value={isDark}
           onValueChange={(value) => setMode(value ? "dark" : "light")}
-          trackColor={{ false: "#cbd5e1", true: "#10b981" }}
-          thumbColor="#ffffff"
+          trackColor={{ false: theme.badgeSoft, true: theme.primary }}
+          thumbColor={theme.textInverse}
         />
       </View>
 
-      <View
-        style={[
-          styles.block,
-          { backgroundColor: cardBg, borderColor: cardBorder },
-        ]}
-      >
-        <Text style={[styles.blockTitle, { color: titleColor }]}>
-          {t("preferences.food.title")}
-        </Text>
-        <Text style={[styles.help, { color: subColor }]}>
-          {t("preferences.food.description")}
-        </Text>
+      <View style={[styles.block, theme.shadows.sm]}>
+        <Text style={styles.blockTitle}>{t("preferences.food.title")}</Text>
+        <Text style={styles.help}>{t("preferences.food.description")}</Text>
 
-        <View style={{ marginTop: 12 }}>
-          <Text style={[styles.sectionTitle, { color: titleColor }]}>
-            {t("preferences.food.dietTitle")}
-          </Text>
-          <Text style={[styles.help, { color: subColor }]}>
-            {t("preferences.food.currentDiet", { diet: dietLabel })}
-          </Text>
+        <View style={styles.sectionSpacingTop}>
+          <Text style={styles.sectionTitle}>{t("preferences.food.dietTitle")}</Text>
+          <Text style={styles.help}>{t("preferences.food.currentDiet", { diet: dietLabel })}</Text>
 
           <View style={styles.chips}>
             {DIETS.map((d) => {
@@ -184,28 +126,10 @@ export default function SettingsScreen() {
                 <Pressable
                   key={d.key}
                   onPress={() => changeDiet(d.key)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: active
-                        ? isDark
-                          ? "#ffffff"
-                          : "#101114"
-                        : isDark
-                          ? "rgba(255,255,255,0.08)"
-                          : "rgba(16,17,20,0.06)",
-                      borderColor: active ? "transparent" : cardBorder,
-                    },
-                  ]}
+                  style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
                   disabled={!prefsLoaded}
                 >
-                  <Text
-                    style={{
-                      color: active ? (isDark ? "#000" : "#fff") : titleColor,
-                      fontWeight: "900",
-                      fontSize: 12,
-                    }}
-                  >
+                  <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>
                     {t(`preferences.diets.${d.key}`)}
                   </Text>
                 </Pressable>
@@ -214,15 +138,11 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={{ marginTop: 14 }}>
-          <Text style={[styles.sectionTitle, { color: titleColor }]}>
-            {t("preferences.food.allergensTitle")}
-          </Text>
-          <Text style={[styles.help, { color: subColor }]}>
-            {t("preferences.food.allergensDescription")}
-          </Text>
+        <View style={styles.sectionSpacingLargeTop}>
+          <Text style={styles.sectionTitle}>{t("preferences.food.allergensTitle")}</Text>
+          <Text style={styles.help}>{t("preferences.food.allergensDescription")}</Text>
 
-          <View style={{ marginTop: 6 }}>
+          <View style={styles.allergensList}>
             {ALLERGENS.map((a) => {
               const checked = prefs.avoidAllergens.includes(a.key);
               return (
@@ -232,30 +152,16 @@ export default function SettingsScreen() {
                   style={styles.checkRow}
                   disabled={!prefsLoaded}
                 >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      {
-                        borderColor: cardBorder,
-                        backgroundColor: checked
-                          ? isDark
-                            ? "#ffffff"
-                            : "#101114"
-                          : "transparent",
-                      },
-                    ]}
-                  >
+                  <View style={[styles.checkbox, checked ? styles.checkboxActive : styles.checkboxInactive]}>
                     {checked ? (
                       <Ionicons
                         name="checkmark"
                         size={16}
-                        color={isDark ? "#000" : "#fff"}
+                        color={theme.textInverse}
                       />
                     ) : null}
                   </View>
-                  <Text style={[styles.checkText, { color: titleColor }]}>
-                    {t(`preferences.allergens.${a.key}`)}
-                  </Text>
+                  <Text style={styles.checkText}>{t(`preferences.allergens.${a.key}`)}</Text>
                 </Pressable>
               );
             })}
@@ -266,61 +172,129 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, padding: 16, gap: 14 },
-  title: { fontSize: 22, fontWeight: "800", marginBottom: 6 },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    content: {
+      padding: theme.layout.screenPadding,
+      paddingBottom: theme.spacing.xl,
+      gap: theme.spacing.md,
+    },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xxl,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.5,
+      marginBottom: 6,
+    },
 
-  row: {
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  texts: { flex: 1, gap: 4 },
-  label: { fontSize: 16, fontWeight: "700" },
-  help: { fontSize: 13 },
+    row: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      borderWidth: 1,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.spacing.md,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      elevation: 2,
+    },
+    texts: { flex: 1, gap: 4 },
+    label: {
+      color: theme.text,
+      fontSize: theme.fontSizes.mdPlus,
+      fontWeight: theme.fontWeights.bold,
+    },
+    help: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+    },
 
-  block: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  blockTitle: { fontSize: 16, fontWeight: "900" },
+    block: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      gap: theme.spacing.sm,
+    },
+    blockTitle: {
+      color: theme.text,
+      fontSize: theme.fontSizes.mdPlus,
+      fontWeight: theme.fontWeights.heavy,
+    },
 
-  sectionTitle: { fontSize: 14, fontWeight: "900" },
+    sectionTitle: {
+      color: theme.text,
+      fontSize: theme.fontSizes.base,
+      fontWeight: theme.fontWeights.heavy,
+    },
+    sectionSpacingTop: { marginTop: 12 },
+    sectionSpacingLargeTop: { marginTop: 14 },
 
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 },
-  chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
+    chips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginTop: 10,
+    },
+    chip: {
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: theme.borderRadius.pill,
+      borderWidth: 1,
+    },
+    chipActive: {
+      backgroundColor: theme.primary,
+      borderColor: "transparent",
+    },
+    chipInactive: {
+      backgroundColor: theme.neutralSoft,
+      borderColor: theme.border,
+    },
+    chipText: {
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.xs,
+    },
+    chipTextActive: { color: theme.textInverse },
+    chipTextInactive: { color: theme.text },
 
-  checkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 10,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 7,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkText: { fontSize: 14, fontWeight: "800" },
-});
+    allergensList: { marginTop: 6 },
+    checkRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 10,
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 7,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkboxActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    checkboxInactive: {
+      backgroundColor: "transparent",
+      borderColor: theme.border,
+    },
+    checkText: {
+      color: theme.text,
+      fontSize: theme.fontSizes.base,
+      fontWeight: theme.fontWeights.bold,
+    },
+  });
+}

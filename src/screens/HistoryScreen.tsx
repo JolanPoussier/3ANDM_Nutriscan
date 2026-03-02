@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import type { HistoryStackParamList } from "../navigation/types";
 import type { HistoryItem } from "../types/history";
@@ -20,25 +21,17 @@ import {
   nutriScoreNumberToGrade,
   nutriScoreToGrade,
 } from "../utils/nutriScore";
+import { useAppTheme } from "../context/ThemeContext";
+import { getNutriColor } from "../utils/nutriColor";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "Historique">;
-
-function nutriColor(grade?: string) {
-  const g = (grade ?? "").toLowerCase();
-  if (g === "a") return "#1b9e3e";
-  if (g === "b") return "#7cc043";
-  if (g === "c") return "#f6c244";
-  if (g === "d") return "#f08a2b";
-  if (g === "e") return "#d64541";
-  return "rgba(255,255,255,0.18)";
-}
 
 function formatDate(ts: number) {
   const d = new Date(ts);
   return `${d.toLocaleDateString()} • ${d.toLocaleTimeString().slice(0, 5)}`;
 }
 
-//Permets de renvoyer le timestamp du lundi de la semaine en cours
+// Permets de renvoyer le timestamp du lundi de la semaine en cours
 function getWeekStartTimestamp(timestamp: number) {
   const d = new Date(timestamp);
   const day = d.getDay();
@@ -60,6 +53,9 @@ type WeeklyScorePoint = {
 };
 
 export default function HistoryScreen({ navigation }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<HistoryItem[]>([]);
 
@@ -145,6 +141,26 @@ export default function HistoryScreen({ navigation }: Props) {
     [weeklyScores],
   );
 
+  const globalBadgeDynamicStyle = useMemo(
+    () => ({ backgroundColor: getNutriColor(theme, globalGrade ?? undefined) }),
+    [globalGrade, theme],
+  );
+
+  const chartBarStyle = useCallback(
+    (average: number) => ({
+      height: `${Math.max(8, (average / chartMax) * 100)}%` as const,
+      backgroundColor: getNutriColor(theme, nutriScoreToGrade(average) ?? undefined),
+    }),
+    [chartMax, theme],
+  );
+
+  const itemBadgeStyle = useCallback(
+    (grade?: string | null) => ({
+      backgroundColor: getNutriColor(theme, grade ?? undefined),
+    }),
+    [theme],
+  );
+
   const onDelete = useCallback((barcode: string) => {
     Alert.alert("Supprimer", "Retirer ce produit de l'historique ?", [
       { text: "Annuler", style: "cancel" },
@@ -161,9 +177,9 @@ export default function HistoryScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator />
-        <Text style={[styles.muted, { marginTop: 10 }]}>Chargement…</Text>
+        <Text style={styles.loadingText}>Chargement…</Text>
       </View>
     );
   }
@@ -173,20 +189,13 @@ export default function HistoryScreen({ navigation }: Props) {
       <FlatList
         data={items}
         keyExtractor={(item) => item.barcode}
-        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+        contentContainerStyle={styles.listContentContainer}
         ListHeaderComponent={
-          <View style={styles.dashboardCard}>
-            <Text style={styles.dashboardTitle}>
-              Score nutritionnel personnel
-            </Text>
+          <View style={[styles.dashboardCard, theme.shadows.md]}>
+            <Text style={styles.dashboardTitle}>Score nutritionnel personnel</Text>
             <View style={styles.globalScoreRow}>
               <Text style={styles.globalLabel}>Nutri-Score global</Text>
-              <View
-                style={[
-                  styles.globalBadge,
-                  { backgroundColor: nutriColor(globalGrade ?? undefined) },
-                ]}
-              >
+              <View style={[styles.globalBadge, globalBadgeDynamicStyle]}>
                 <Text style={styles.globalBadgeText}>{globalGrade ?? "—"}</Text>
               </View>
             </View>
@@ -222,26 +231,13 @@ export default function HistoryScreen({ navigation }: Props) {
                   <View style={styles.chartBarsRow}>
                     {weeklyScores.map((point) => (
                       <View key={point.key} style={styles.barColumn}>
-                        <View
-                          style={[
-                            styles.bar,
-                            {
-                              height: `${Math.max(8, (point.average / chartMax) * 100)}%`,
-                              backgroundColor: nutriColor(
-                                nutriScoreToGrade(point.average) ?? undefined,
-                              ),
-                            },
-                          ]}
-                        />
+                        <View style={[styles.bar, chartBarStyle(point.average)]} />
                       </View>
                     ))}
                   </View>
                   <View style={styles.chartLabelsRow}>
                     {weeklyScores.map((point) => (
-                      <Text
-                        key={`${point.key}-label`}
-                        style={styles.chartLabel}
-                      >
+                      <Text key={`${point.key}-label`} style={styles.chartLabel}>
                         {point.label}
                       </Text>
                     ))}
@@ -251,20 +247,21 @@ export default function HistoryScreen({ navigation }: Props) {
             </View>
           </View>
         }
-        ListHeaderComponentStyle={{ marginBottom: 12 }}
+        ListHeaderComponentStyle={styles.listHeaderSpacing}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.title}>Historique</Text>
-            <Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>
+            <Text style={styles.emptyText}>
               Aucun scan pour l’instant.
-              {"\n"}Scanne un produit pour alimenter ton score.
+              {"\n"}
+              Scanne un produit pour alimenter ton score.
             </Text>
           </View>
         }
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        ItemSeparatorComponent={itemSeparator}
         renderItem={({ item }) => (
           <Pressable
-            style={styles.card}
+            style={[styles.card, theme.shadows.sm]}
             onPress={() =>
               navigation.navigate("ProductDetails", { barcode: item.barcode })
             }
@@ -279,39 +276,35 @@ export default function HistoryScreen({ navigation }: Props) {
                   />
                 ) : (
                   <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
-                    <Text style={styles.thumbText}>—</Text>
+                    <Ionicons
+                      name="fast-food-outline"
+                      size={24}
+                      color={theme.textMuted}
+                    />
                   </View>
                 )}
               </View>
 
-              <View style={{ flex: 1 }}>
+              <View style={styles.flexOne}>
                 <Text style={styles.name} numberOfLines={1}>
                   {item.name ?? "Produit inconnu"}
                 </Text>
                 <Text style={styles.muted} numberOfLines={1}>
-                  {item.brand ?? "Marque inconnue"} •{" "}
-                  {formatDate(item.scannedAt)}
+                  {item.brand ?? "Marque inconnue"} • {formatDate(item.scannedAt)}
                 </Text>
 
-                <View
-                  style={{
-                    marginTop: 8,
-                    flexDirection: "row",
-                    gap: 8,
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <View
-                    style={[
-                      styles.badge,
-                      { backgroundColor: nutriColor(item.nutriScore) },
-                    ]}
-                  >
-                    <Text style={styles.badgeText}>
-                      Nutri{" "}
-                      {item.nutriScore ? item.nutriScore.toUpperCase() : "—"}
-                    </Text>
+                <View style={styles.badgeRow}>
+                  <View style={[styles.badge, itemBadgeStyle(item.nutriScore)]}>
+                    {item.nutriScore && item.nutriScore.toUpperCase() !== "UNKNOWN" ? (
+                      <Text style={styles.badgeText}>
+                        Nutri {item.nutriScore.toUpperCase()}
+                      </Text>
+                    ) : (
+                      <View style={styles.badgeUnknownRow}>
+                        <Text style={styles.badgeText}>Nutri</Text>
+                        <Ionicons name="help-circle" size={16} color={theme.textInverse} />
+                      </View>
+                    )}
                   </View>
                   <Text style={styles.muted}>barcode: {item.barcode}</Text>
                 </View>
@@ -343,173 +336,275 @@ export default function HistoryScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0f172a" },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 18,
-    backgroundColor: "#0f172a",
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 20,
-  },
+function itemSeparator() {
+  return <View style={separatorStyles.separator} />;
+}
 
-  title: { color: "#f8fafc", fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
-  muted: { color: "#94a3b8", fontSize: 13 },
-  dashboardMuted: { color: "#94a3b8", fontSize: 13 },
-
-  dashboardCard: {
-    backgroundColor: "#1e293b",
-    borderRadius: 24,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#334155",
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  dashboardTitle: { color: "#f8fafc", fontSize: 18, fontWeight: "800" },
-  globalScoreRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  globalLabel: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  globalBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  globalBadgeText: { color: "#fff", fontWeight: "900", fontSize: 20 },
-
-  statsRow: { flexDirection: "row", gap: 10 },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#0f172a",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#334155",
-    padding: 12,
-    gap: 4,
-    alignItems: "center",
-  },
-  statLabel: {
-    color: "#64748b",
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  statValue: { color: "#f8fafc", fontSize: 20, fontWeight: "900" },
-
-  chartWrap: {
-    marginTop: 6,
-    backgroundColor: "#0f172a",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#334155",
-    padding: 14,
-    gap: 10,
-  },
-  chartTitle: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  chartBarsRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    height: 110,
-    gap: 8,
-  },
-  barColumn: {
-    flex: 1,
-    height: "100%",
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  bar: { width: "100%", borderRadius: 8 },
-  chartLabelsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 8,
-    marginTop: 4,
-  },
-  chartLabel: {
-    flex: 1,
-    color: "#64748b",
-    fontSize: 10,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-
-  card: {
-    backgroundColor: "#1e293b",
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#334155",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  row: { flexDirection: "row", gap: 14, alignItems: "center" },
-
-  thumbWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: 16,
-    backgroundColor: "#0f172a",
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumb: { width: "94%", height: "94%", borderRadius: 12 },
-  thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
-  thumbText: { color: "#64748b", fontWeight: "800" },
-
-  name: { color: "#f8fafc", fontSize: 16, fontWeight: "800" },
-
-  badge: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999 },
-  badgeText: { color: "#fff", fontWeight: "900", fontSize: 12, letterSpacing: 0.5 },
-
-  deleteBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteText: {
-    color: "#ef4444",
-    fontWeight: "900",
-    fontSize: 16,
-  },
-
-  compareBtn: {
-    marginTop: 12,
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    backgroundColor: "#334155",
-  },
-  compareText: { color: "#f8fafc", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
+const separatorStyles = StyleSheet.create({
+  separator: { height: 8 },
 });
+
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    listContentContainer: {
+      padding: theme.layout.screenPadding,
+      paddingBottom: theme.spacing.xl,
+    },
+    listHeaderSpacing: {
+      marginBottom: theme.spacing.md,
+    },
+
+    loadingContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 18,
+      backgroundColor: theme.background,
+    },
+    loadingText: {
+      fontSize: theme.fontSizes.sm,
+      marginTop: theme.spacing.sm,
+      color: theme.textMuted,
+    },
+
+    emptyState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 20,
+    },
+    emptyText: {
+      fontSize: theme.fontSizes.sm,
+      textAlign: "center",
+      marginTop: theme.spacing.sm,
+      color: theme.textMuted,
+    },
+
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xl,
+      fontWeight: theme.fontWeights.extraBold,
+      letterSpacing: -0.5,
+    },
+    muted: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.textMuted,
+    },
+    dashboardMuted: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.textMuted,
+    },
+
+    dashboardCard: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      borderWidth: 1,
+      gap: theme.spacing.sm,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    dashboardTitle: {
+      color: theme.text,
+      fontSize: theme.fontSizes.lg,
+      fontWeight: theme.fontWeights.extraBold,
+    },
+    globalScoreRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    globalLabel: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: theme.fontWeights.bold,
+    },
+    globalBadge: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    globalBadgeText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.xlMinus,
+      textTransform: "uppercase",
+    },
+
+    statsRow: {
+      flexDirection: "row",
+      gap: theme.spacing.sm,
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: theme.imagePlaceholder,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      borderWidth: 1,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+      alignItems: "center",
+    },
+    statLabel: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.xs,
+      fontWeight: theme.fontWeights.bold,
+      textTransform: "uppercase",
+    },
+    statValue: {
+      color: theme.text,
+      fontSize: theme.fontSizes.lg,
+      fontWeight: theme.fontWeights.heavy,
+    },
+
+    chartWrap: {
+      marginTop: theme.spacing.sm,
+      backgroundColor: theme.imagePlaceholder,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      borderWidth: 1,
+      padding: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    chartTitle: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: theme.fontWeights.extraBold,
+    },
+    chartBarsRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      height: 110,
+      gap: theme.spacing.sm,
+    },
+    barColumn: {
+      flex: 1,
+      height: "100%",
+      justifyContent: "flex-end",
+      borderRadius: theme.borderRadius.sm,
+      overflow: "hidden",
+    },
+    bar: {
+      width: "100%",
+      borderRadius: theme.borderRadius.sm,
+    },
+    chartLabelsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.xs,
+    },
+    chartLabel: {
+      flex: 1,
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.xxs,
+      fontWeight: theme.fontWeights.semiBold,
+      textAlign: "center",
+    },
+
+    card: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    row: {
+      flexDirection: "row",
+      gap: theme.spacing.md,
+      alignItems: "center",
+    },
+
+    thumbWrap: {
+      width: 68,
+      height: 68,
+      borderRadius: theme.borderRadius.md,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.imagePlaceholder,
+    },
+    thumb: {
+      width: "94%",
+      height: "94%",
+      borderRadius: Math.max(0, theme.borderRadius.md - 2),
+    },
+    thumbPlaceholder: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    name: {
+      color: theme.text,
+      fontSize: theme.fontSizes.lg,
+      fontWeight: theme.fontWeights.extraBold,
+    },
+
+    badgeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      marginTop: theme.spacing.sm,
+      gap: theme.spacing.sm,
+    },
+    badge: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: theme.borderRadius.pill,
+    },
+    badgeText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.xs,
+      letterSpacing: 0.5,
+    },
+    badgeUnknownRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+
+    compareBtn: {
+      marginTop: theme.spacing.md,
+      alignSelf: "flex-start",
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: theme.borderRadius.pill,
+      backgroundColor: theme.badgeSoft,
+    },
+    compareText: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.extraBold,
+      fontSize: theme.fontSizes.xs,
+      letterSpacing: 0.5,
+    },
+
+    deleteBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.borderRadius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.errorSoft,
+    },
+    deleteText: {
+      color: theme.error,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.mdPlus,
+    },
+
+    flexOne: { flex: 1 },
+  });
+}

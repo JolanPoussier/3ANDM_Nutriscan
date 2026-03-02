@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 
 import type { HistoryStackParamList } from "../navigation/types";
 import type { OFFProductResponse, OFFProduct } from "../types/off";
 import { OFFFetch } from "../utils/api";
+import { useAppTheme } from "../context/ThemeContext";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "Comparator">;
 
@@ -51,7 +53,6 @@ function betterIsHigher(key: MetricKey) {
 
 function fmtNumber(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
-  // évite 4.0000
   if (Number.isInteger(n)) return String(n);
   return String(Math.round(n * 10) / 10);
 }
@@ -130,6 +131,8 @@ function computeWinner(left: OFFProduct, right: OFFProduct) {
 }
 
 export default function ComparatorScreen({ route }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { leftBarcode, rightBarcode } = route.params;
 
   const [loading, setLoading] = useState(true);
@@ -183,7 +186,7 @@ export default function ComparatorScreen({ route }: Props) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
-        <Text style={[styles.muted, { marginTop: 10 }]}>Chargement…</Text>
+        <Text style={styles.loadingText}>Chargement…</Text>
       </View>
     );
   }
@@ -192,10 +195,8 @@ export default function ComparatorScreen({ route }: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.title}>Comparateur</Text>
-        <Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>
-          Impossible d’afficher la comparaison.
-        </Text>
-        <Text style={[styles.muted, { marginTop: 8 }]}>{error ?? ""}</Text>
+        <Text style={styles.errorIntro}>Impossible d’afficher la comparaison.</Text>
+        <Text style={styles.errorText}>{error ?? ""}</Text>
       </View>
     );
   }
@@ -239,7 +240,9 @@ export default function ComparatorScreen({ route }: Props) {
 
           const leftText =
             m.key === "nutriscore"
-              ? (left.nutriscore_grade ? left.nutriscore_grade.toUpperCase() : "—")
+              ? left.nutriscore_grade
+                ? left.nutriscore_grade.toUpperCase()
+                : "—"
               : m.key === "nova"
                 ? fmtNumber(lv ?? undefined)
                 : m.unit === "kcal"
@@ -248,22 +251,35 @@ export default function ComparatorScreen({ route }: Props) {
 
           const rightText =
             m.key === "nutriscore"
-              ? (right.nutriscore_grade ? right.nutriscore_grade.toUpperCase() : "—")
+              ? right.nutriscore_grade
+                ? right.nutriscore_grade.toUpperCase()
+                : "—"
               : m.key === "nova"
                 ? fmtNumber(rv ?? undefined)
                 : m.unit === "kcal"
                   ? fmtWithUnit(rv ?? undefined, "kcal")
                   : fmtWithUnit(rv ?? undefined, "g");
 
+          const leftStateStyle = leftBetter
+            ? styles.cellPositive
+            : rightBetter
+              ? styles.cellNegative
+              : styles.cellNeutral;
+          const rightStateStyle = rightBetter
+            ? styles.cellPositive
+            : leftBetter
+              ? styles.cellNegative
+              : styles.cellNeutral;
+
           return (
             <View key={m.key} style={styles.row}>
               <Text style={styles.metric}>{m.label}</Text>
 
               <View style={styles.values}>
-                <View style={[styles.cell, leftBetter && styles.good, rightBetter && styles.bad]}>
+                <View style={[styles.cell, leftStateStyle]}>
                   <Text style={styles.cellText}>{leftText}</Text>
                 </View>
-                <View style={[styles.cell, rightBetter && styles.good, leftBetter && styles.bad]}>
+                <View style={[styles.cell, rightStateStyle]}>
                   <Text style={styles.cellText}>{rightText}</Text>
                 </View>
               </View>
@@ -289,6 +305,8 @@ export default function ComparatorScreen({ route }: Props) {
 }
 
 function ProductHeader({ product, sideLabel }: { product: OFFProduct; sideLabel: string }) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const grade = product.nutriscore_grade?.toUpperCase() ?? "—";
   return (
     <View style={styles.headerCard}>
@@ -299,11 +317,11 @@ function ProductHeader({ product, sideLabel }: { product: OFFProduct; sideLabel:
             <Image source={{ uri: product.image_url }} style={styles.img} resizeMode="contain" />
           ) : (
             <View style={[styles.imgWrap, styles.imgPlaceholder]}>
-              <Text style={styles.muted}>—</Text>
+              <Ionicons name="fast-food-outline" size={24} color={theme.imagePlaceholderText} />
             </View>
           )}
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={styles.flexOne}>
           <Text style={styles.pName} numberOfLines={2}>
             {tiny(product.product_name)}
           </Text>
@@ -324,94 +342,129 @@ function ProductHeader({ product, sideLabel }: { product: OFFProduct; sideLabel:
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0f172a" },
-  content: { padding: 16, paddingBottom: 28, gap: 14 },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: { flex: 1, backgroundColor: theme.background },
+    content: { padding: 16, paddingBottom: 28, gap: 14 },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#0f172a" },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 18,
+      backgroundColor: theme.background,
+    },
 
-  title: { color: "#f8fafc", fontSize: 24, fontWeight: "900", letterSpacing: -0.5 },
-  muted: { color: "#94a3b8", fontSize: 13 },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xl,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.5,
+    },
+    muted: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
+    loadingText: { marginTop: 10, color: theme.textMuted, fontSize: theme.fontSizes.sm },
+    errorIntro: {
+      textAlign: "center",
+      marginTop: 8,
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+    },
+    errorText: { marginTop: 8, color: theme.textMuted, fontSize: theme.fontSizes.sm },
 
-  twoCols: { flexDirection: "row", gap: 12 },
-  headerCard: {
-    flex: 1,
-    backgroundColor: "#1e293b",
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#334155",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  sideLabel: { color: "#cbd5e1", fontSize: 13, marginBottom: 10, fontWeight: "700" },
+    twoCols: { flexDirection: "row", gap: 12 },
+    headerCard: {
+      flex: 1,
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: 20,
+      padding: 14,
+      borderWidth: 1,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    sideLabel: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+      marginBottom: 10,
+      fontWeight: theme.fontWeights.bold,
+    },
 
-  headerRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-  imgWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: "#0f172a",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  img: { width: "95%", height: "95%" },
-  imgPlaceholder: {},
+    headerRow: { flexDirection: "row", gap: 10, alignItems: "center" },
+    imgWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      backgroundColor: theme.imagePlaceholder,
+    },
+    img: { width: "95%", height: "95%" },
+    imgPlaceholder: {},
 
-  pName: { color: "#f8fafc", fontWeight: "900", fontSize: 14 },
-  pBadges: { flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" },
+    pName: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.base },
+    pBadges: { flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" },
 
-  badgeSoft: { backgroundColor: "#334155", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
-  badgeText: { color: "#f8fafc", fontWeight: "900", fontSize: 11 },
+    badgeSoft: {
+      backgroundColor: theme.badgeSoft,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: theme.borderRadius.pill,
+    },
+    badgeText: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.xs },
 
-  table: {
-    backgroundColor: "#1e293b",
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#334155",
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  row: { gap: 10 },
-  metric: { color: "#e2e8f0", fontWeight: "800", fontSize: 14 },
+    table: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: 20,
+      padding: 14,
+      borderWidth: 1,
+      gap: 12,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    row: { gap: 10 },
+    metric: { color: theme.textMuted, fontWeight: theme.fontWeights.extraBold, fontSize: theme.fontSizes.base },
 
-  values: { flexDirection: "row", gap: 12 },
-  cell: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: "#0f172a",
-    borderWidth: 1,
-    borderColor: "#334155",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cellText: { color: "#f8fafc", fontWeight: "900", fontSize: 15 },
+    values: { flexDirection: "row", gap: 12 },
+    cell: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cellNeutral: { backgroundColor: theme.cardSoft, borderColor: theme.border },
+    cellPositive: { backgroundColor: theme.primarySoft, borderColor: theme.primary },
+    cellNegative: { backgroundColor: theme.errorSoft, borderColor: theme.error },
+    cellText: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.md },
 
-  good: { backgroundColor: "rgba(16, 185, 129, 0.15)", borderColor: "rgba(16, 185, 129, 0.4)" },
-  bad: { backgroundColor: "rgba(239, 68, 68, 0.15)", borderColor: "rgba(239, 68, 68, 0.4)" },
-
-  summary: {
-    backgroundColor: "#1e293b",
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#334155",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  summaryTitle: { color: "#f8fafc", fontWeight: "900", marginBottom: 8, fontSize: 16 },
-  summaryText: { color: "#e2e8f0", fontWeight: "800", fontSize: 15 },
-});
+    summary: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    summaryTitle: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.heavy,
+      marginBottom: 8,
+      fontSize: theme.fontSizes.mdPlus,
+    },
+    summaryText: { color: theme.text, fontWeight: theme.fontWeights.extraBold, fontSize: theme.fontSizes.md },
+    flexOne: { flex: 1 },
+  });
+}
