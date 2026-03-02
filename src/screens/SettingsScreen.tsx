@@ -3,11 +3,20 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-nat
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAppTheme } from "../context/ThemeContext";
-import { ALLERGENS, DEFAULT_PREFERENCES, DIETS, type AllergenKey, type Diet, type Preferences } from "../types/preferences";
+import { useI18n } from "../context/I18nContext";
+import {
+  ALLERGENS,
+  DEFAULT_PREFERENCES,
+  DIETS,
+  type AllergenKey,
+  type Diet,
+  type Preferences,
+} from "../types/preferences";
 import { getPreferences, setPreferences } from "../utils/preferencesStorage";
 
 export default function SettingsScreen() {
   const { mode, setMode } = useAppTheme();
+  const { locale, setLocale, t } = useI18n();
   const isDark = mode === "dark";
 
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
@@ -46,16 +55,70 @@ export default function SettingsScreen() {
     await setPreferences(next);
   }
 
-  const dietLabel = useMemo(() => DIETS.find((d) => d.key === prefs.diet)?.label ?? "Aucun", [prefs.diet]);
+  async function changeLanguage(language: "fr" | "en") {
+    const next: Preferences = { ...prefs, language };
+    setPrefs(next);
+    await setPreferences(next);
+    await setLocale(language);
+  }
+
+  const dietLabel = useMemo(
+    () => t(`preferences.diets.${prefs.diet}`),
+    [prefs.diet, t]
+  );
 
   return (
-    <ScrollView style={[styles.page, { backgroundColor: isDark ? "#0b0b0c" : "#f7f7f8" }]} contentContainerStyle={{ paddingBottom: 24 }}>
-      <Text style={[styles.title, { color: titleColor }]}>Paramètres utilisateurs</Text>
+    <ScrollView
+      style={[styles.page, { backgroundColor: isDark ? "#0b0b0c" : "#f7f7f8" }]}
+      contentContainerStyle={{ paddingBottom: 24 }}
+    >
+      <Text style={[styles.title, { color: titleColor }]}>{t("preferences.title")}</Text>
 
-      <View style={[styles.row, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+      <View style={[styles.block, { backgroundColor: cardBg, borderColor: cardBorder }]}> 
+        <Text style={[styles.blockTitle, { color: titleColor }]}>{t("preferences.language.title")}</Text>
+        <Text style={[styles.help, { color: subColor }]}>{t("preferences.language.description")}</Text>
+
+        <View style={styles.chips}>
+          {(["fr", "en"] as const).map((lang) => {
+            const active = locale === lang;
+            return (
+              <Pressable
+                key={lang}
+                onPress={() => changeLanguage(lang)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: active
+                      ? isDark
+                        ? "#ffffff"
+                        : "#101114"
+                      : isDark
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(16,17,20,0.06)",
+                    borderColor: active ? "transparent" : cardBorder,
+                  },
+                ]}
+                disabled={!prefsLoaded}
+              >
+                <Text
+                  style={{
+                    color: active ? (isDark ? "#000" : "#fff") : titleColor,
+                    fontWeight: "900",
+                    fontSize: 12,
+                  }}
+                >
+                  {t(`preferences.language.${lang}`)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={[styles.row, { backgroundColor: cardBg, borderColor: cardBorder }]}> 
         <View style={styles.texts}>
-          <Text style={[styles.label, { color: titleColor }]}>Dark mode</Text>
-          <Text style={[styles.help, { color: subColor }]}>Active le thème sombre de l’application</Text>
+          <Text style={[styles.label, { color: titleColor }]}>{t("preferences.theme.darkMode")}</Text>
+          <Text style={[styles.help, { color: subColor }]}>{t("preferences.theme.description")}</Text>
         </View>
 
         <Switch
@@ -66,15 +129,17 @@ export default function SettingsScreen() {
         />
       </View>
 
-      <View style={[styles.block, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <Text style={[styles.blockTitle, { color: titleColor }]}>Préférences alimentaires</Text>
-        <Text style={[styles.help, { color: subColor }]}>
-          Ces préférences sont utilisées pour afficher une alerte sur la fiche produit.
+      <View style={[styles.block, { backgroundColor: cardBg, borderColor: cardBorder }]}> 
+        <Text style={[styles.blockTitle, { color: titleColor }]}>{t("preferences.food.title")}</Text>
+        <Text style={[styles.help, { color: subColor }]}> 
+          {t("preferences.food.description")}
         </Text>
 
         <View style={{ marginTop: 12 }}>
-          <Text style={[styles.sectionTitle, { color: titleColor }]}>Régime</Text>
-          <Text style={[styles.help, { color: subColor }]}>Actuel : {dietLabel}</Text>
+          <Text style={[styles.sectionTitle, { color: titleColor }]}>{t("preferences.food.dietTitle")}</Text>
+          <Text style={[styles.help, { color: subColor }]}>
+            {t("preferences.food.currentDiet", { diet: dietLabel })}
+          </Text>
 
           <View style={styles.chips}>
             {DIETS.map((d) => {
@@ -86,14 +151,26 @@ export default function SettingsScreen() {
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: active ? (isDark ? "#ffffff" : "#101114") : (isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.06)"),
+                      backgroundColor: active
+                        ? isDark
+                          ? "#ffffff"
+                          : "#101114"
+                        : isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(16,17,20,0.06)",
                       borderColor: active ? "transparent" : cardBorder,
                     },
                   ]}
                   disabled={!prefsLoaded}
                 >
-                  <Text style={{ color: active ? (isDark ? "#000" : "#fff") : titleColor, fontWeight: "900", fontSize: 12 }}>
-                    {d.label}
+                  <Text
+                    style={{
+                      color: active ? (isDark ? "#000" : "#fff") : titleColor,
+                      fontWeight: "900",
+                      fontSize: 12,
+                    }}
+                  >
+                    {t(`preferences.diets.${d.key}`)}
                   </Text>
                 </Pressable>
               );
@@ -101,10 +178,9 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-
         <View style={{ marginTop: 14 }}>
-          <Text style={[styles.sectionTitle, { color: titleColor }]}>Allergènes à éviter</Text>
-          <Text style={[styles.help, { color: subColor }]}>Sélectionne ceux que tu veux éviter.</Text>
+          <Text style={[styles.sectionTitle, { color: titleColor }]}>{t("preferences.food.allergensTitle")}</Text>
+          <Text style={[styles.help, { color: subColor }]}>{t("preferences.food.allergensDescription")}</Text>
 
           <View style={{ marginTop: 6 }}>
             {ALLERGENS.map((a) => {
@@ -129,7 +205,9 @@ export default function SettingsScreen() {
                       <Ionicons name="checkmark" size={16} color={isDark ? "#000" : "#fff"} />
                     ) : null}
                   </View>
-                  <Text style={[styles.checkText, { color: titleColor }]}>{a.label}</Text>
+                  <Text style={[styles.checkText, { color: titleColor }]}>
+                    {t(`preferences.allergens.${a.key}`)}
+                  </Text>
                 </Pressable>
               );
             })}

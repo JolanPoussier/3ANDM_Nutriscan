@@ -16,6 +16,7 @@ import { useDebounce } from "../hooks/useDebounce";
 import { OFFSearch } from "../utils/api";
 import type { SearchStackParamList } from "../navigation/types";
 import LoadingDots from "../components/LoadingDots";
+import { useI18n } from "../context/I18nContext";
 
 type Props = NativeStackScreenProps<SearchStackParamList, "Recherche">;
 
@@ -77,7 +78,10 @@ function asText(value: unknown): string {
   return String(value).trim();
 }
 
-function normalizeHit(hit: SearchHit): SearchItem | null {
+function normalizeHit(
+  hit: SearchHit,
+  labels: { unknownBrand: string; unknownProduct: string }
+): SearchItem | null {
   const source = hit._source ?? hit;
   const barcode = String(source.code ?? source.id ?? source._id ?? hit.code ?? hit.id ?? hit._id ?? "").trim();
   if (!barcode) return null;
@@ -86,13 +90,13 @@ function normalizeHit(hit: SearchHit): SearchItem | null {
   const brandFromTags =
     source.brands_tags?.[0]?.replace(/^en:/, "").replace(/-/g, " ") ??
     hit.brands_tags?.[0]?.replace(/^en:/, "").replace(/-/g, " ");
-  const brand = rawBrand || brandFromTags || "Marque inconnue";
+  const brand = rawBrand || brandFromTags || labels.unknownBrand;
 
   return {
     barcode,
     name:
       asText(source.product_name ?? source.product_name_fr ?? source.product_name_en) ||
-      "Produit sans nom",
+      labels.unknownProduct,
     brand,
     imageUrl: source.image_url ?? source.image_front_url ?? hit.image_url ?? hit.image_front_url,
     nutriScore: (source.nutriscore_grade ?? hit.nutriscore_grade)?.toUpperCase(),
@@ -100,6 +104,7 @@ function normalizeHit(hit: SearchHit): SearchItem | null {
 }
 
 export default function SearchScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query.trim(), 450);
 
@@ -121,7 +126,12 @@ export default function SearchScreen({ navigation }: Props) {
 
     const source = data.hits ?? data.products ?? [];
     const mapped = source
-      .map(normalizeHit)
+      .map((hit) =>
+        normalizeHit(hit, {
+          unknownBrand: t("common.unknownBrand"),
+          unknownProduct: t("common.unknownProduct"),
+        })
+      )
       .filter((item): item is SearchItem => item !== null);
 
     return { mapped, sourceLength: source.length };
@@ -153,7 +163,7 @@ export default function SearchScreen({ navigation }: Props) {
         setHasMore(mapped.length > 0);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Erreur réseau pendant la recherche.");
+          setError(e instanceof Error ? e.message : t("common.networkError"));
           setResults([]);
           setPage(1);
           setHasMore(false);
@@ -167,14 +177,14 @@ export default function SearchScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, t]);
 
   const emptyMessage = useMemo(() => {
-    if (!debouncedQuery) return "Tape un nom ou une marque pour lancer une recherche.";
+    if (!debouncedQuery) return t("search.startHint");
     if (loading || loadingMore) return "";
     if (error) return error;
-    return "Aucun résultat trouvé.";
-  }, [debouncedQuery, error, loading, loadingMore]);
+    return t("search.noResults");
+  }, [debouncedQuery, error, loading, loadingMore, t]);
 
   async function loadMore() {
     if (!debouncedQuery || loading || loadingMore || !hasMore) return;
@@ -194,7 +204,7 @@ export default function SearchScreen({ navigation }: Props) {
       setPage(nextPage);
       setHasMore(sourceLength > 0);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur réseau pendant la recherche.");
+      setError(e instanceof Error ? e.message : t("common.networkError"));
     } finally {
       setLoadingMore(false);
     }
@@ -211,11 +221,11 @@ export default function SearchScreen({ navigation }: Props) {
   return (
     <View style={styles.page}>
       <View style={styles.header}>
-        <Text style={styles.title}>Rechercher un produit</Text>
+        <Text style={styles.title}>{t("search.title")}</Text>
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Nom ou marque (ex: nutella)"
+          placeholder={t("search.inputPlaceholder")}
           placeholderTextColor="rgba(255,255,255,0.45)"
           autoCorrect={false}
           autoCapitalize="none"
@@ -226,7 +236,7 @@ export default function SearchScreen({ navigation }: Props) {
       {loading ? (
         <View style={styles.center}>
           <LoadingDots />
-          <Text style={styles.muted}>Recherche en cours…</Text>
+          <Text style={styles.muted}>{t("search.searching")}</Text>
         </View>
       ) : (
         <FlatList
@@ -280,7 +290,7 @@ export default function SearchScreen({ navigation }: Props) {
             loadingMore ? (
               <View style={styles.footer}>
                 <LoadingDots size={7} />
-                <Text style={styles.muted}>Chargement de plus de résultats…</Text>
+                <Text style={styles.muted}>{t("search.loadingMore")}</Text>
               </View>
             ) : hasMore && results.length > 0 ? (
               <View style={styles.footerIdle}>

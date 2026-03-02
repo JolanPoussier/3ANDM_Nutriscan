@@ -12,6 +12,7 @@ export async function getPreferences(): Promise<Preferences> {
     return {
       avoidAllergens: Array.isArray(parsed.avoidAllergens) ? parsed.avoidAllergens : [],
       diet: parsed.diet ?? "none",
+      language: parsed.language === "en" ? "en" : "fr",
     };
   } catch {
     return DEFAULT_PREFERENCES;

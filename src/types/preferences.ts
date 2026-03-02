@@ -6,6 +6,8 @@ export type Diet =
   | "halal"
   | "kosher";
 
+export type Language = "fr" | "en";
+
 export type AllergenKey =
   | "gluten"
   | "milk"
@@ -24,11 +26,13 @@ export type AllergenKey =
 export type Preferences = {
   avoidAllergens: AllergenKey[];
   diet: Diet;
+  language: Language;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
   avoidAllergens: [],
   diet: "none",
+  language: "fr",
 };
 
 export const ALLERGENS: Array<{ key: AllergenKey; label: string }> = [
