@@ -90,6 +90,10 @@ export type TranslationMap = {
     allergensTags: string;
     category: string;
     nutriScore: string;
+    share: string;
+    shareText: string;
+    shareErrorTitle: string;
+    shareErrorMessage: string;
   };
 };
 
@@ -203,6 +207,11 @@ export const translations: Record<Locale, TranslationMap> = {
       allergensTags: "Allergènes (tags)",
       category: "Catégorie",
       nutriScore: "Nutri-Score",
+      share: "Partager cette fiche",
+      shareText:
+        "Produit: {{name}}\nMarque: {{brand}}\nCode-barres: {{barcode}}\nNutri-Score: {{nutri}}\n{{url}}",
+      shareErrorTitle: "Partage impossible",
+      shareErrorMessage: "Une erreur est survenue pendant le partage.",
     },
   },
   en: {
@@ -314,6 +323,11 @@ export const translations: Record<Locale, TranslationMap> = {
       allergensTags: "Allergens (tags)",
       category: "Category",
       nutriScore: "Nutri-Score",
+      share: "Share this product",
+      shareText:
+        "Product: {{name}}\nBrand: {{brand}}\nBarcode: {{barcode}}\nNutri-Score: {{nutri}}\n{{url}}",
+      shareErrorTitle: "Unable to share",
+      shareErrorMessage: "An error occurred while sharing.",
     },
   },
 };
