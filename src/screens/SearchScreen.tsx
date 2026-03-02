@@ -10,13 +10,16 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import { useDebounce } from "../hooks/useDebounce";
-import { OFFSearch } from "../utils/api";
-import type { SearchStackParamList } from "../navigation/types";
 import LoadingDots from "../components/LoadingDots";
 import { useI18n } from "../context/I18nContext";
+import { useAppTheme } from "../context/ThemeContext";
+import { useDebounce } from "../hooks/useDebounce";
+import type { SearchStackParamList } from "../navigation/types";
+import { OFFSearch } from "../utils/api";
+import { getNutriColor } from "../utils/nutriColor";
 
 type Props = NativeStackScreenProps<SearchStackParamList, "Recherche">;
 
@@ -59,17 +62,8 @@ type SearchItem = {
   imageUrl?: string;
   nutriScore?: string;
 };
-const PAGE_SIZE = 20;
 
-function nutriColor(grade?: string) {
-  const g = (grade ?? "").toLowerCase();
-  if (g === "a") return "#1b9e3e";
-  if (g === "b") return "#7cc043";
-  if (g === "c") return "#f6c244";
-  if (g === "d") return "#f08a2b";
-  if (g === "e") return "#d64541";
-  return "rgba(255,255,255,0.18)";
-}
+const PAGE_SIZE = 20;
 
 function asText(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -80,10 +74,12 @@ function asText(value: unknown): string {
 
 function normalizeHit(
   hit: SearchHit,
-  labels: { unknownBrand: string; unknownProduct: string }
+  labels: { unknownBrand: string; unknownProduct: string },
 ): SearchItem | null {
   const source = hit._source ?? hit;
-  const barcode = String(source.code ?? source.id ?? source._id ?? hit.code ?? hit.id ?? hit._id ?? "").trim();
+  const barcode = String(
+    source.code ?? source.id ?? source._id ?? hit.code ?? hit.id ?? hit._id ?? "",
+  ).trim();
   if (!barcode) return null;
 
   const rawBrand = asText(source.brands ?? hit.brands);
@@ -105,6 +101,9 @@ function normalizeHit(
 
 export default function SearchScreen({ navigation }: Props) {
   const { t } = useI18n();
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query.trim(), 450);
 
@@ -115,6 +114,11 @@ export default function SearchScreen({ navigation }: Props) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const lastEndReachedAt = useRef(0);
+
+  const nutriBadgeStyle = useMemo(
+    () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
+    [theme],
+  );
 
   async function fetchSearchPage(searchTerm: string, nextPage: number) {
     const data = await OFFSearch<SearchResponse>(searchTerm, {
@@ -130,7 +134,7 @@ export default function SearchScreen({ navigation }: Props) {
         normalizeHit(hit, {
           unknownBrand: t("common.unknownBrand"),
           unknownProduct: t("common.unknownProduct"),
-        })
+        }),
       )
       .filter((item): item is SearchItem => item !== null);
 
@@ -155,7 +159,7 @@ export default function SearchScreen({ navigation }: Props) {
       setError(null);
 
       try {
-        const { mapped, sourceLength } = await fetchSearchPage(debouncedQuery, 1);
+        const { mapped } = await fetchSearchPage(debouncedQuery, 1);
         if (cancelled) return;
 
         setResults(mapped);
@@ -213,10 +217,10 @@ export default function SearchScreen({ navigation }: Props) {
   function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    if (distanceFromBottom < 120) {
-      loadMore();
-    }
+    if (distanceFromBottom < 120) loadMore();
   }
+
+  const listContentStyle = results.length === 0 ? styles.emptyList : styles.list;
 
   return (
     <View style={styles.page}>
@@ -226,10 +230,10 @@ export default function SearchScreen({ navigation }: Props) {
           value={query}
           onChangeText={setQuery}
           placeholder={t("search.inputPlaceholder")}
-          placeholderTextColor="rgba(255,255,255,0.45)"
+          placeholderTextColor={theme.textMuted}
           autoCorrect={false}
           autoCapitalize="none"
-          style={styles.input}
+          style={[styles.input, theme.shadows.sm]}
         />
       </View>
 
@@ -241,7 +245,7 @@ export default function SearchScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={results}
-          contentContainerStyle={results.length === 0 ? styles.emptyList : styles.list}
+          contentContainerStyle={listContentStyle}
           keyExtractor={(item) => item.barcode}
           onEndReached={() => {
             const now = Date.now();
@@ -255,15 +259,17 @@ export default function SearchScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
-              style={styles.item}
+              style={[styles.item, theme.shadows.sm]}
             >
-              {item.imageUrl ? (
-                <Image source={{ uri: item.imageUrl }} style={styles.image} />
-              ) : (
-                <View style={[styles.image, styles.imagePlaceholder]}>
-                  <Text style={styles.imagePlaceholderText}>No image</Text>
-                </View>
-              )}
+              <View style={styles.image}>
+                {item.imageUrl ? (
+                  <Image source={{ uri: item.imageUrl }} style={styles.image} />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
+                  </View>
+                )}
+              </View>
 
               <View style={styles.itemContent}>
                 <Text numberOfLines={2} style={styles.itemTitle}>
@@ -274,8 +280,12 @@ export default function SearchScreen({ navigation }: Props) {
                 </Text>
               </View>
 
-              <View style={[styles.badge, { backgroundColor: nutriColor(item.nutriScore) }]}>
-                <Text style={styles.badgeText}>{item.nutriScore ?? "—"}</Text>
+              <View style={[styles.badge, nutriBadgeStyle(item.nutriScore)]}>
+                {item.nutriScore && item.nutriScore.toUpperCase() !== "UNKNOWN" ? (
+                  <Text style={styles.badgeText}>{item.nutriScore}</Text>
+                ) : (
+                  <Ionicons name="help" size={20} color={theme.textInverse} />
+                )}
               </View>
             </Pressable>
           )}
@@ -294,7 +304,7 @@ export default function SearchScreen({ navigation }: Props) {
               </View>
             ) : hasMore && results.length > 0 ? (
               <View style={styles.footerIdle}>
-                <LoadingDots size={6} color="rgba(255,255,255,0.45)" />
+                <LoadingDots size={6} color={theme.badgeMuted} />
               </View>
             ) : null
           }
@@ -304,53 +314,88 @@ export default function SearchScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c" },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: { flex: 1, backgroundColor: theme.background },
+    header: {
+      paddingHorizontal: theme.layout.screenPadding,
+      paddingTop: theme.layout.screenPadding,
+      paddingBottom: 10,
+      gap: 10,
+    },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xxl,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.5,
+    },
+    input: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      color: theme.text,
+      borderRadius: theme.borderRadius.lg,
+      borderWidth: 1,
+      paddingHorizontal: theme.layout.screenPadding,
+      paddingVertical: 14,
+      fontSize: theme.fontSizes.md,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
 
-  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10, gap: 10 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    color: "#fff",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
+    list: { paddingHorizontal: 14, paddingBottom: 24, gap: 12 },
+    emptyList: { flexGrow: 1, paddingHorizontal: 18, paddingBottom: 20 },
+    center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+    footer: { alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
+    footerIdle: { alignItems: "center", justifyContent: "center", paddingVertical: 10 },
+    muted: { textAlign: "center", color: theme.textMuted, fontSize: theme.fontSizes.md },
 
-  list: { paddingHorizontal: 12, paddingBottom: 20, gap: 10 },
-  emptyList: { flexGrow: 1, paddingHorizontal: 18, paddingBottom: 20 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
-  footer: { alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
-  footerIdle: { alignItems: "center", justifyContent: "center", paddingVertical: 10 },
-  muted: { color: "rgba(255,255,255,0.7)", textAlign: "center" },
+    item: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    image: {
+      width: 68,
+      height: 68,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.imagePlaceholder,
+    },
+    imagePlaceholder: { alignItems: "center", justifyContent: "center" },
 
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  image: { width: 64, height: 64, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)" },
-  imagePlaceholder: { alignItems: "center", justifyContent: "center" },
-  imagePlaceholderText: { color: "rgba(255,255,255,0.5)", fontSize: 11 },
+    itemContent: { flex: 1, gap: theme.spacing.xs },
+    itemTitle: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.extraBold,
+      fontSize: theme.fontSizes.lg,
+    },
+    itemBrand: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+    },
 
-  itemContent: { flex: 1, gap: 4 },
-  itemTitle: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  itemBrand: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
-
-  badge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: { color: "#fff", fontWeight: "900", fontSize: 14 },
-});
+    badge: {
+      width: 34,
+      height: 34,
+      borderRadius: theme.borderRadius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    badgeText: {
+      color: theme.textInverse,
+      fontSize: theme.fontSizes.xs,
+      fontWeight: theme.fontWeights.heavy,
+      textTransform: "uppercase",
+    },
+  });
+}

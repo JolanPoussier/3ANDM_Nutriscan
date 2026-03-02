@@ -7,6 +7,7 @@ import type { HistoryItem } from "../types/history";
 import { getHistory } from "../utils/historyStorage";
 import { OFFFetch } from "../utils/api";
 import type { OFFProductResponse } from "../types/off";
+import { useAppTheme } from "../context/ThemeContext";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "CompareHub">;
 
@@ -18,6 +19,9 @@ type MiniProduct = {
 };
 
 export default function CompareHubScreen({ navigation, route }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const leftBarcode = route.params?.leftBarcode;
   const rightBarcode = route.params?.rightBarcode;
 
@@ -31,11 +35,11 @@ export default function CompareHubScreen({ navigation, route }: Props) {
 
   const leftFromHistory = useMemo(
     () => (leftBarcode ? history.find((h) => h.barcode === leftBarcode) : undefined),
-    [history, leftBarcode]
+    [history, leftBarcode],
   );
   const rightFromHistory = useMemo(
     () => (rightBarcode ? history.find((h) => h.barcode === rightBarcode) : undefined),
-    [history, rightBarcode]
+    [history, rightBarcode],
   );
 
   useEffect(() => {
@@ -56,8 +60,7 @@ export default function CompareHubScreen({ navigation, route }: Props) {
 
         if (side === "left") setFallbackLeft(mini);
         else setFallbackRight(mini);
-      } catch {
-      }
+      } catch {}
     }
 
     setFallbackLeft(null);
@@ -72,11 +75,21 @@ export default function CompareHubScreen({ navigation, route }: Props) {
   }, [leftBarcode, rightBarcode, leftFromHistory, rightFromHistory]);
 
   const left: MiniProduct | undefined = leftFromHistory
-    ? { barcode: leftFromHistory.barcode, name: leftFromHistory.name, brand: leftFromHistory.brand, imageUrl: leftFromHistory.imageUrl }
+    ? {
+        barcode: leftFromHistory.barcode,
+        name: leftFromHistory.name,
+        brand: leftFromHistory.brand,
+        imageUrl: leftFromHistory.imageUrl,
+      }
     : fallbackLeft ?? undefined;
 
   const right: MiniProduct | undefined = rightFromHistory
-    ? { barcode: rightFromHistory.barcode, name: rightFromHistory.name, brand: rightFromHistory.brand, imageUrl: rightFromHistory.imageUrl }
+    ? {
+        barcode: rightFromHistory.barcode,
+        name: rightFromHistory.name,
+        brand: rightFromHistory.brand,
+        imageUrl: rightFromHistory.imageUrl,
+      }
     : fallbackRight ?? undefined;
 
   const canCompare = Boolean(leftBarcode && rightBarcode);
@@ -105,9 +118,7 @@ export default function CompareHubScreen({ navigation, route }: Props) {
       <Pressable
         disabled={!canCompare}
         style={[styles.primaryBtn, !canCompare && styles.primaryBtnDisabled]}
-        onPress={() =>
-          navigation.navigate("Comparator", { leftBarcode: leftBarcode!, rightBarcode: rightBarcode! })
-        }
+        onPress={() => navigation.navigate("Comparator", { leftBarcode: leftBarcode!, rightBarcode: rightBarcode! })}
       >
         <Text style={styles.primaryBtnText}>Comparer</Text>
       </Pressable>
@@ -128,6 +139,8 @@ function SlotCard({
   onAdd: () => void;
   onRemove: () => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const has = Boolean(barcode);
 
   return (
@@ -159,7 +172,7 @@ function SlotCard({
             )}
           </View>
 
-          <View style={{ flex: 1 }}>
+          <View style={styles.flexOne}>
             <Text style={styles.pName} numberOfLines={2}>
               {item?.name ?? "Produit"}
             </Text>
@@ -177,58 +190,92 @@ function SlotCard({
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c", padding: 16, gap: 12 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "900" },
-  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: { flex: 1, padding: 16, gap: 14, backgroundColor: theme.background },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xxl,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.5,
+    },
+    muted: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
 
-  card: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 10,
-  },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardLabel: { color: "rgba(255,255,255,0.85)", fontWeight: "900" },
+    card: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      gap: 12,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    cardLabel: { color: theme.textMuted, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.md },
 
-  addBox: {
-    height: 84,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    backgroundColor: "rgba(0,0,0,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addPlus: { color: "#fff", fontSize: 26, fontWeight: "900" },
-  addText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
+    addBox: {
+      height: 90,
+      borderRadius: 16,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.neutralSoft,
+      borderColor: theme.border,
+    },
+    addPlus: { color: theme.textSoft, fontSize: theme.fontSizes.xxxl, fontWeight: theme.fontWeights.heavy },
+    addText: { color: theme.textMuted, fontWeight: theme.fontWeights.extraBold, marginTop: 4 },
 
-  productRow: { flexDirection: "row", gap: 12, alignItems: "center" },
-  thumbWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumb: { width: "92%", height: "92%" },
-  thumbPlaceholder: {},
+    productRow: { flexDirection: "row", gap: 14, alignItems: "center" },
+    thumbWrap: {
+      width: 68,
+      height: 68,
+      borderRadius: 16,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.imagePlaceholder,
+    },
+    thumb: { width: "95%", height: "95%" },
+    thumbPlaceholder: {},
 
-  pName: { color: "#fff", fontWeight: "900", fontSize: 13 },
+    pName: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.md },
 
-  smallBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
-  },
-  smallBtnText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+    smallBtn: {
+      backgroundColor: theme.badgeSoft,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: theme.borderRadius.pill,
+    },
+    smallBtnText: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.xs,
+      letterSpacing: 0.5,
+    },
 
-  primaryBtn: { marginTop: 4, paddingVertical: 14, borderRadius: 16, backgroundColor: "#fff" },
-  primaryBtnDisabled: { opacity: 0.35 },
-  primaryBtnText: { textAlign: "center", color: "#000", fontWeight: "900" },
-});
+    primaryBtn: {
+      marginTop: 8,
+      paddingVertical: 16,
+      borderRadius: 16,
+      backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    primaryBtnDisabled: { opacity: 0.4, shadowOpacity: 0, elevation: 0 },
+    primaryBtnText: {
+      color: theme.textInverse,
+      textAlign: "center",
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.mdPlus,
+      letterSpacing: 0.5,
+    },
+    flexOne: { flex: 1 },
+  });
+}

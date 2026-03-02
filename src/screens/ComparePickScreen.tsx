@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -10,12 +10,14 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 
 import type { HistoryStackParamList } from "../navigation/types";
 import type { HistoryItem } from "../types/history";
 import { getHistory } from "../utils/historyStorage";
 import { OFFSearch } from "../utils/api";
 import { useDebounce } from "../hooks/useDebounce";
+import { useAppTheme } from "../context/ThemeContext";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "ComparePick">;
 
@@ -35,13 +37,14 @@ type UnifiedItem =
   | { kind: "api"; barcode: string; name?: string; brand?: string; imageUrl?: string };
 
 export default function ComparePickScreen({ navigation, route }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { slot, leftBarcode, rightBarcode } = route.params;
 
   const [q, setQ] = useState("");
   const debouncedQ = useDebounce(q, 400);
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
-
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiHits, setApiHits] = useState<OFFSearchHit[]>([]);
@@ -145,27 +148,25 @@ export default function ComparePickScreen({ navigation, route }: Props) {
   return (
     <View style={styles.page}>
       <Text style={styles.title}>Choisir un produit</Text>
-      <Text style={styles.muted}>
-        Recherche dans l’historique + Open Food Facts
-      </Text>
+      <Text style={styles.muted}>Recherche dans l’historique + Open Food Facts</Text>
 
       <View style={styles.searchBox}>
         <TextInput
           value={q}
           onChangeText={setQ}
           placeholder="Nom, marque ou code-barres…"
-          placeholderTextColor="rgba(255,255,255,0.45)"
+          placeholderTextColor={theme.textMuted}
           style={styles.input}
           autoCorrect={false}
           autoCapitalize="none"
         />
       </View>
 
-      <View style={{ minHeight: 22 }}>
+      <View style={styles.statusContainer}>
         {apiLoading ? (
           <View style={styles.inlineRow}>
             <ActivityIndicator />
-            <Text style={[styles.muted, { marginLeft: 10 }]}>Recherche…</Text>
+            <Text style={styles.loadingText}>Recherche…</Text>
           </View>
         ) : apiError ? (
           <Text style={styles.error}>{apiError}</Text>
@@ -177,11 +178,11 @@ export default function ComparePickScreen({ navigation, route }: Props) {
       <FlatList
         data={unified}
         keyExtractor={(item) => `${item.kind}:${item.barcode}`}
-        contentContainerStyle={{ paddingBottom: 16 }}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        contentContainerStyle={styles.listContentContainer}
+        ItemSeparatorComponent={itemSeparator}
         ListEmptyComponent={
           showEmpty ? (
-            <View style={{ paddingTop: 22 }}>
+            <View style={styles.emptyContainer}>
               <Text style={styles.muted}>Aucun résultat.</Text>
             </View>
           ) : null
@@ -194,12 +195,16 @@ export default function ComparePickScreen({ navigation, route }: Props) {
                   <Image source={{ uri: item.imageUrl }} style={styles.thumb} resizeMode="contain" />
                 ) : (
                   <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
-                    <Text style={styles.muted}>{item.kind === "api" ? "OFF" : "—"}</Text>
+                    {item.kind === "api" ? (
+                      <Ionicons name="fast-food-outline" size={24} color={theme.imagePlaceholderText} />
+                    ) : (
+                      <Text style={styles.muted}>—</Text>
+                    )}
                   </View>
                 )}
               </View>
 
-              <View style={{ flex: 1 }}>
+              <View style={styles.flexOne}>
                 <Text style={styles.name} numberOfLines={1}>
                   {item.name ?? "Produit"}
                 </Text>
@@ -207,11 +212,9 @@ export default function ComparePickScreen({ navigation, route }: Props) {
                   {item.brand ?? "Marque"} • {item.barcode}
                 </Text>
 
-                {item.kind === "history" ? (
-                  <Text style={[styles.muted, { marginTop: 4 }]}>Historique</Text>
-                ) : (
-                  <Text style={[styles.muted, { marginTop: 4 }]}>Open Food Facts</Text>
-                )}
+                <Text style={styles.sourceText}>
+                  {item.kind === "history" ? "Historique" : "Open Food Facts"}
+                </Text>
               </View>
 
               <View style={styles.pill}>
@@ -225,47 +228,105 @@ export default function ComparePickScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c", padding: 16, gap: 12 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "900" },
-  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
-  error: { color: "#ffb4b4", fontSize: 13, fontWeight: "800" },
+function itemSeparator() {
+  return <View style={separatorStyles.separator} />;
+}
 
-  searchBox: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  input: { color: "#fff", fontWeight: "700" },
-
-  inlineRow: { flexDirection: "row", alignItems: "center" },
-
-  card: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  row: { flexDirection: "row", gap: 12, alignItems: "center" },
-
-  thumbWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumb: { width: "92%", height: "92%" },
-  thumbPlaceholder: {},
-
-  name: { color: "#fff", fontSize: 14, fontWeight: "900" },
-
-  pill: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.10)" },
-  pillText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+const separatorStyles = StyleSheet.create({
+  separator: { height: 10 },
 });
+
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: {
+      flex: 1,
+      padding: 16,
+      gap: 14,
+      backgroundColor: theme.background,
+    },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xxl,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.5,
+    },
+    muted: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+    },
+    error: {
+      color: theme.error,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: theme.fontWeights.extraBold,
+    },
+
+    searchBox: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    input: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.bold,
+      fontSize: theme.fontSizes.md,
+    },
+
+    statusContainer: { minHeight: 22 },
+    inlineRow: { flexDirection: "row", alignItems: "center" },
+    loadingText: { marginLeft: 10, color: theme.textMuted, fontSize: theme.fontSizes.sm },
+
+    listContentContainer: { paddingBottom: 16 },
+    emptyContainer: { paddingTop: 22 },
+
+    card: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: 20,
+      padding: 12,
+      borderWidth: 1,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    row: { flexDirection: "row", gap: 14, alignItems: "center" },
+    flexOne: { flex: 1 },
+
+    thumbWrap: {
+      width: 62,
+      height: 62,
+      borderRadius: 14,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.imagePlaceholder,
+    },
+    thumb: { width: "95%", height: "95%" },
+    thumbPlaceholder: {},
+
+    name: { color: theme.text, fontSize: theme.fontSizes.md, fontWeight: theme.fontWeights.heavy },
+    sourceText: { marginTop: 4, color: theme.textMuted, fontSize: theme.fontSizes.sm },
+
+    pill: {
+      backgroundColor: theme.primary,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: theme.borderRadius.pill,
+    },
+    pillText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.xs,
+      letterSpacing: 0.5,
+    },
+  });
+}

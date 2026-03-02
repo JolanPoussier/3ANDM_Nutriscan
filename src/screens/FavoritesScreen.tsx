@@ -16,22 +16,13 @@ import type { FavoritesStackParamList } from "../navigation/types";
 import { useFavorites } from "../context/FavoritesContext";
 import { useAppTheme } from "../context/ThemeContext";
 import CategoryPickerModal from "../components/CategoryPickerModal";
+import { getNutriColor } from "../utils/nutriColor";
 
 type Props = NativeStackScreenProps<FavoritesStackParamList, "Favoris">;
 
-function nutriColor(grade?: string) {
-  const g = (grade ?? "").toLowerCase();
-  if (g === "a") return "#1b9e3e";
-  if (g === "b") return "#7cc043";
-  if (g === "c") return "#f6c244";
-  if (g === "d") return "#f08a2b";
-  if (g === "e") return "#d64541";
-  return "rgba(255,255,255,0.18)";
-}
-
 export default function FavoritesScreen({ navigation }: Props) {
-  const { mode } = useAppTheme();
-  const isDark = mode === "dark";
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     categories,
     favorites,
@@ -39,8 +30,8 @@ export default function FavoritesScreen({ navigation }: Props) {
     deleteCategory,
     moveFavorite,
     removeFavorite,
-  } =
-    useFavorites();
+  } = useFavorites();
+
   const [newCategory, setNewCategory] = useState("");
   const [moveTargetBarcode, setMoveTargetBarcode] = useState<string | null>(null);
   const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<string[]>([]);
@@ -53,6 +44,11 @@ export default function FavoritesScreen({ navigation }: Props) {
     });
     return categories.map((cat) => ({ category: cat, items: map.get(cat.id) ?? [] }));
   }, [categories, favorites]);
+
+  const nutriStyle = useMemo(
+    () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
+    [theme],
+  );
 
   function onAddCategory() {
     const name = newCategory.trim();
@@ -72,23 +68,20 @@ export default function FavoritesScreen({ navigation }: Props) {
       [
         { text: "Annuler", style: "cancel" },
         { text: "Supprimer", style: "destructive", onPress: () => deleteCategory(id) },
-      ]
+      ],
     );
   }
 
   function toggleCategory(categoryId: string) {
     setCollapsedCategoryIds((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
     );
   }
 
   return (
     <>
-      <ScrollView
-        style={[styles.page, { backgroundColor: isDark ? "#0b0b0c" : "#f7f7f8" }]}
-        contentContainerStyle={styles.content}
-      >
-        <Text style={[styles.title, { color: isDark ? "#fff" : "#101114" }]}>Favoris</Text>
+      <ScrollView style={styles.page} contentContainerStyle={styles.contentContainer}>
+        <Text style={styles.title}>Favoris</Text>
 
         <View style={styles.addRow}>
           <TextInput
@@ -98,104 +91,79 @@ export default function FavoritesScreen({ navigation }: Props) {
             returnKeyType="done"
             blurOnSubmit
             placeholder="Nouvelle catégorie"
-            placeholderTextColor={isDark ? "rgba(255,255,255,0.45)" : "rgba(16,17,20,0.45)"}
-            style={[
-              styles.input,
-              {
-                backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fff",
-                borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(16,17,20,0.12)",
-                color: isDark ? "#fff" : "#101114",
-              },
-            ]}
+            placeholderTextColor={theme.textMuted}
+            style={styles.input}
           />
           <Pressable style={styles.addButton} onPress={onAddCategory}>
             <Text style={styles.addButtonText}>Ajouter</Text>
           </Pressable>
         </View>
 
-        {favorites.length === 0 ? (
-          <Text style={[styles.empty, { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(16,17,20,0.6)" }]}>
-            Aucun favori pour le moment.
-          </Text>
-        ) : null}
+        {favorites.length === 0 ? <Text style={styles.empty}>Aucun favori pour le moment.</Text> : null}
 
         {grouped.map(({ category, items }) => (
-          <View
-            key={category.id}
-            style={[
-              styles.section,
-              {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#fff",
-                borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.10)",
-              },
-            ]}
-          >
+          <View key={category.id} style={[styles.section, theme.shadows.sm]}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: isDark ? "#fff" : "#101114" }]}>{category.name}</Text>
+              <Text style={styles.sectionTitle}>{category.name}</Text>
               <View style={styles.sectionRight}>
                 {category.id !== "default_uncategorized" ? (
                   <Pressable onPress={() => onDeleteCategory(category.id, category.name)} style={styles.iconAction}>
-                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={18} color={theme.error} />
                   </Pressable>
                 ) : null}
-                <Text style={[styles.countText, { color: isDark ? "rgba(255,255,255,0.75)" : "rgba(16,17,20,0.7)" }]}>
-                  {items.length}
-                </Text>
+                <Text style={styles.countText}>{items.length}</Text>
                 <Pressable onPress={() => toggleCategory(category.id)} style={styles.iconAction}>
                   <Ionicons
                     name={collapsedCategoryIds.includes(category.id) ? "chevron-down" : "chevron-up"}
-                    size={16}
-                    color={isDark ? "rgba(255,255,255,0.8)" : "rgba(16,17,20,0.8)"}
+                    size={20}
+                    color={theme.textMuted}
                   />
                 </Pressable>
               </View>
             </View>
 
             {collapsedCategoryIds.includes(category.id) ? null : items.length === 0 ? (
-              <Text style={[styles.muted, { color: isDark ? "rgba(255,255,255,0.65)" : "rgba(16,17,20,0.5)" }]}>
-                Aucun produit dans cette catégorie.
-              </Text>
+              <Text style={styles.muted}>Aucun produit dans cette catégorie.</Text>
             ) : (
               items.map((item) => (
                 <Pressable
                   key={item.barcode}
                   onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
-                  style={[
-                    styles.item,
-                    {
-                      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#f4f5f7",
-                      borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(16,17,20,0.08)",
-                    },
-                  ]}
+                  style={styles.item}
                 >
-                  {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.image} />
-                  ) : (
-                    <View style={[styles.image, styles.imagePlaceholder]} />
-                  )}
+                  <View style={styles.image}>
+                    {item.imageUrl ? (
+                      <Image source={{ uri: item.imageUrl }} style={styles.image} />
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
+                      </View>
+                    )}
+                  </View>
 
                   <View style={styles.itemBody}>
-                    <Text style={[styles.itemName, { color: isDark ? "#fff" : "#101114" }]} numberOfLines={2}>
+                    <Text style={styles.itemName} numberOfLines={2}>
                       {item.name}
                     </Text>
-                    <Text
-                      style={[styles.itemBrand, { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(16,17,20,0.65)" }]}
-                      numberOfLines={1}
-                    >
+                    <Text style={styles.itemBrand} numberOfLines={1}>
                       {item.brand}
                     </Text>
                     <View style={styles.itemActions}>
                       <Pressable style={styles.smallButton} onPress={() => onMove(item.barcode)}>
-                        <Text style={styles.smallButtonText}>Catégorie</Text>
+                        <Ionicons name="folder-open-outline" size={14} color={theme.primary} />
                       </Pressable>
                       <Pressable style={styles.trashButton} onPress={() => removeFavorite(item.barcode)}>
-                        <Ionicons name="trash-outline" size={16} color="#f87171" />
+                        <Ionicons name="trash-outline" size={16} color={theme.error} />
                       </Pressable>
                     </View>
                   </View>
 
-                  <View style={[styles.nutri, { backgroundColor: nutriColor(item.nutriScore) }]}>
-                    <Text style={styles.nutriText}>{item.nutriScore ?? "—"}</Text>
+                  <View style={[styles.nutri, nutriStyle(item.nutriScore)]}>
+                    {item.nutriScore && item.nutriScore.toUpperCase() !== "UNKNOWN" ? (
+                      <Text style={styles.nutriText}>{item.nutriScore}</Text>
+                    ) : (
+                      <Ionicons name="help" size={18} color={theme.textInverse} />
+                    )}
                   </View>
                 </Pressable>
               ))
@@ -218,63 +186,142 @@ export default function FavoritesScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1 },
-  content: { padding: 14, paddingBottom: 28, gap: 12 },
-  title: { fontSize: 24, fontWeight: "800" },
-  addRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  input: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
-  addButton: {
-    backgroundColor: "#2563eb",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  addButtonText: { color: "#fff", fontWeight: "700" },
-  empty: { textAlign: "center", marginTop: 8 },
-  section: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  countText: { fontSize: 13, fontWeight: "700", minWidth: 20, textAlign: "right" },
-  iconAction: { paddingHorizontal: 4, paddingVertical: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: "800" },
-  muted: { fontSize: 13 },
-  item: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  image: { width: 58, height: 58, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.08)" },
-  imagePlaceholder: { backgroundColor: "rgba(255,255,255,0.08)" },
-  itemBody: { flex: 1, gap: 3 },
-  itemName: { fontWeight: "700", fontSize: 14 },
-  itemBrand: { fontSize: 13 },
-  itemActions: { flexDirection: "row", gap: 8, marginTop: 4 },
-  smallButton: {
-    backgroundColor: "rgba(37,99,235,0.18)",
-    borderRadius: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-  },
-  smallButtonText: { color: "#93c5fd", fontSize: 12, fontWeight: "700" },
-  trashButton: {
-    backgroundColor: "rgba(239,68,68,0.2)",
-    borderRadius: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nutri: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  nutriText: { color: "#fff", fontWeight: "900", fontSize: 14 },
-});
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: { flex: 1, backgroundColor: theme.background },
+    contentContainer: {
+      padding: theme.layout.screenPadding,
+      paddingBottom: theme.spacing.xxl,
+      gap: theme.spacing.lg,
+    },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xxxl,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.5,
+    },
+    addRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing.md },
+    input: {
+      flex: 1,
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      color: theme.text,
+      borderRadius: theme.borderRadius.lg,
+      borderWidth: 1,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: theme.fontSizes.md,
+      fontWeight: theme.fontWeights.semiBold,
+    },
+    addButton: {
+      backgroundColor: theme.primary,
+      borderRadius: theme.borderRadius.lg,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    addButtonText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.extraBold,
+      fontSize: theme.fontSizes.lg,
+    },
+    empty: { color: theme.textMuted, textAlign: "center", marginTop: 8, fontSize: theme.fontSizes.md },
+
+    section: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderWidth: 1,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      gap: theme.spacing.md,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      elevation: 2,
+    },
+    sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    sectionRight: { flexDirection: "row", alignItems: "center", gap: theme.spacing.sm },
+    countText: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.md,
+      fontWeight: theme.fontWeights.extraBold,
+      minWidth: 20,
+      textAlign: "right",
+    },
+    iconAction: { paddingHorizontal: 6, paddingVertical: 4 },
+    sectionTitle: {
+      color: theme.text,
+      fontSize: theme.fontSizes.lg,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.2,
+    },
+    muted: { color: theme.textMuted, fontSize: theme.fontSizes.base, fontWeight: theme.fontWeights.medium },
+
+    item: {
+      backgroundColor: theme.background,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      borderWidth: 1,
+      padding: theme.spacing.md,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+    },
+    image: {
+      width: 64,
+      height: 64,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.imagePlaceholder,
+    },
+    imagePlaceholder: { alignItems: "center", justifyContent: "center" },
+    itemBody: { flex: 1, gap: theme.spacing.xs },
+    itemName: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.extraBold,
+      fontSize: theme.fontSizes.md,
+    },
+    itemBrand: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: theme.fontWeights.medium,
+    },
+    itemActions: {
+      flexDirection: "row",
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.xs,
+    },
+    smallButton: {
+      backgroundColor: theme.primarySoft,
+      borderRadius: theme.borderRadius.sm,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    trashButton: {
+      backgroundColor: theme.errorSoft,
+      borderRadius: theme.borderRadius.sm,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    nutri: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.borderRadius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    nutriText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.sm,
+      textTransform: "uppercase",
+    },
+  });
+}

@@ -1,7 +1,15 @@
-import React from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useMemo } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import type { FavoriteCategory } from "../context/FavoritesContext";
+import { useAppTheme } from "../context/ThemeContext";
 
 type Props = {
   visible: boolean;
@@ -20,8 +28,15 @@ export default function CategoryPickerModal({
   onSelect,
   onClose,
 }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>{title}</Text>
@@ -53,45 +68,57 @@ export default function CategoryPickerModal({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 18,
-  },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    maxHeight: "80%",
-    borderRadius: 14,
-    backgroundColor: "#101114",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    padding: 12,
-    gap: 10,
-  },
-  title: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  list: { maxHeight: 320 },
-  listContent: { gap: 8 },
-  option: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  optionSelected: {
-    borderColor: "rgba(59,130,246,0.7)",
-    backgroundColor: "rgba(37,99,235,0.20)",
-  },
-  optionText: { color: "#fff", fontWeight: "700" },
-  closeButton: {
-    alignSelf: "flex-end",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  closeText: { color: "#93c5fd", fontWeight: "700" },
-});
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.overlaySoft,
+      padding: theme.spacing.lg,
+    },
+    card: {
+      width: "100%",
+      maxWidth: 420,
+      maxHeight: "80%",
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      backgroundColor: theme.cardContrast,
+      padding: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    title: {
+      color: theme.textInverse,
+      fontSize: theme.fontSizes.mdPlus,
+      fontWeight: theme.fontWeights.extraBold,
+    },
+    list: { maxHeight: 320 },
+    listContent: { gap: theme.spacing.sm },
+    option: {
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      backgroundColor: theme.neutralSoft,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: theme.spacing.sm + 2,
+      paddingHorizontal: theme.spacing.sm + 2,
+    },
+    optionSelected: {
+      borderColor: theme.primary,
+      backgroundColor: theme.primarySoft,
+    },
+    optionText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.bold,
+    },
+    closeButton: {
+      alignSelf: "flex-end",
+      paddingHorizontal: theme.spacing.sm + 2,
+      paddingVertical: theme.spacing.sm,
+    },
+    closeText: {
+      color: theme.primary,
+      fontWeight: theme.fontWeights.bold,
+    },
+  });
+}

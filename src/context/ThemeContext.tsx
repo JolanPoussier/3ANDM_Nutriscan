@@ -9,11 +9,24 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type AppThemeMode = "light" | "dark";
 
+import { colors, spacing, fontSizes, fontWeights, borderRadius, shadows, layout } from "../theme/theme";
+
+type ThemeType = typeof colors.light & {
+  spacing: typeof spacing;
+  fontSizes: typeof fontSizes;
+  fontWeights: typeof fontWeights;
+  borderRadius: typeof borderRadius;
+  shadows: typeof shadows.light;
+  layout: typeof layout;
+};
+
 type AppTheme = {
   mode: AppThemeMode;
+  isDark: boolean;
   setMode: (mode: AppThemeMode) => void;
   toggleMode: () => void;
   navigationTheme: NavigationTheme;
+  theme: ThemeType;
 };
 
 const ThemeContext = createContext<AppTheme | null>(null);
@@ -56,13 +69,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [mode]);
 
   const value = useMemo<AppTheme>(() => {
-    const navigationTheme = mode === "dark" ? NavigationDarkTheme : NavigationDefaultTheme;
+    const isDark = mode === "dark";
+    const navigationTheme = isDark ? NavigationDarkTheme : NavigationDefaultTheme;
+
+    const currentTheme: ThemeType = {
+      ...colors[mode],
+      spacing,
+      fontSizes,
+      fontWeights,
+      borderRadius,
+      shadows: shadows[mode],
+      layout,
+    };
 
     return {
       mode,
+      isDark,
       setMode,
       toggleMode: () => setMode((prev) => (prev === "dark" ? "light" : "dark")),
       navigationTheme,
+      theme: currentTheme,
     };
   }, [mode]);
 

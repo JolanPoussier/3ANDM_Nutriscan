@@ -1,39 +1,49 @@
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
+import * as Haptics from "expo-haptics";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
-import * as Haptics from "expo-haptics";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import type { ScannerStackParamList } from "../navigation/types";
-import { OFFFetch } from "../utils/api";
-import type { OFFProductResponse } from "../types/off";
-import { addToHistory } from "../utils/historyStorage";
 import { useI18n } from "../context/I18nContext";
+import { useAppTheme } from "../context/ThemeContext";
+import type { ScannerStackParamList } from "../navigation/types";
+import type { OFFProductResponse } from "../types/off";
+import { OFFFetch } from "../utils/api";
+import { addToHistory } from "../utils/historyStorage";
 
 type Props = NativeStackScreenProps<ScannerStackParamList, "Scanner">;
 
+function CornerMask({ top, left, right, bottom }: { top?: number; left?: number; right?: number; bottom?: number }) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const circleTop = top !== undefined ? -30 : -60;
+  const circleLeft = left !== undefined ? -30 : -60;
+  const containerStyle = useMemo(() => ({ top, left, right, bottom }), [top, left, right, bottom]);
+  const cornerCircleStyle = useMemo(
+    () => ({ top: circleTop, left: circleLeft, borderColor: theme.scannerMask }),
+    [circleTop, circleLeft, theme.scannerMask],
+  );
+
+  return (
+    <View style={[styles.cornerMaskContainer, containerStyle]}>
+      <View style={[styles.cornerMaskCircle, cornerCircleStyle]} />
+    </View>
+  );
+}
+
 export default function ScannerScreen({ navigation }: Props) {
   const { t } = useI18n();
-  const [permission, requestPermission] = useCameraPermissions();
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const [permission, requestPermission] = useCameraPermissions();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // lock anti double-scan
   const locked = useRef(false);
 
   const barcodeTypes = useMemo(
-    () =>
-      [
-        "ean13",
-        "ean8",
-        "upc_a",
-        "upc_e",
-        "code128",
-        "code39",
-        "qr",
-      ] as const,
-    []
+    () => ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "qr"] as const,
+    [],
   );
 
   const reset = useCallback(() => {
@@ -77,9 +87,7 @@ export default function ScannerScreen({ navigation }: Props) {
         });
 
         navigation.navigate("ProductDetails", { barcode });
-
-        navigation.navigate("ProductDetails", { barcode });
-      } catch (e) {
+      } catch {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setError(t("scanner.networkError"));
         locked.current = false;
@@ -87,7 +95,7 @@ export default function ScannerScreen({ navigation }: Props) {
         setIsLoading(false);
       }
     },
-    [navigation, t]
+    [navigation, t],
   );
 
   if (!permission) {
@@ -101,9 +109,7 @@ export default function ScannerScreen({ navigation }: Props) {
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={[styles.text, { textAlign: "center", marginBottom: 14 }]}>
-          {t("scanner.cameraNeed")}
-        </Text>
+        <Text style={styles.permissionText}>{t("scanner.cameraNeed")}</Text>
         <Pressable style={styles.btnPrimary} onPress={requestPermission}>
           <Text style={styles.btnPrimaryText}>{t("scanner.allowCamera")}</Text>
         </Pressable>
@@ -120,30 +126,44 @@ export default function ScannerScreen({ navigation }: Props) {
         barcodeScannerSettings={{ barcodeTypes: barcodeTypes as any }}
       />
 
-      <View style={styles.overlay}>
-        <View style={styles.top}>
-          <Text style={styles.title}>{t("scanner.title")}</Text>
-          <Text style={styles.subtitle}>{t("scanner.subtitle")}</Text>
+      <View style={styles.overlayContainer}>
+        <View style={styles.layerTop}>
+          <View style={styles.topContent}>
+            <Text style={styles.title}>{t("scanner.title")}</Text>
+            <Text style={styles.subtitle}>{t("scanner.subtitle")}</Text>
+          </View>
         </View>
 
-        <View style={styles.frame} />
+        <View style={styles.layerCenter}>
+          <View style={styles.layerSide} />
+          <View style={styles.frameOuter}>
+            <CornerMask top={0} left={0} />
+            <CornerMask top={0} right={0} />
+            <CornerMask bottom={0} left={0} />
+            <CornerMask bottom={0} right={0} />
+            <View style={styles.frame} />
+          </View>
+          <View style={styles.layerSide} />
+        </View>
 
-        <View style={styles.bottom}>
-          {isLoading ? (
-            <View style={styles.row}>
-              <ActivityIndicator />
-              <Text style={[styles.text, { marginLeft: 10 }]}>{t("scanner.searching")}</Text>
-            </View>
-          ) : error ? (
-            <>
-              <Text style={styles.error}>{error}</Text>
-              <Pressable style={styles.btnSecondary} onPress={reset}>
-                <Text style={styles.btnSecondaryText}>{t("common.retry")}</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Text style={styles.hint}>{t("scanner.hint")}</Text>
-          )}
+        <View style={styles.layerBottom}>
+          <View style={styles.bottomCard}>
+            {isLoading ? (
+              <View style={styles.row}>
+                <ActivityIndicator />
+                <Text style={styles.loadingText}>{t("scanner.searching")}</Text>
+              </View>
+            ) : error ? (
+              <>
+                <Text style={styles.error}>{error}</Text>
+                <Pressable style={styles.btnSecondary} onPress={reset}>
+                  <Text style={styles.btnSecondaryText}>{t("common.retry")}</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Text style={styles.hint}>{t("scanner.hint")}</Text>
+            )}
+          </View>
         </View>
       </View>
 
@@ -156,64 +176,134 @@ export default function ScannerScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    cornerMaskContainer: {
+      position: "absolute",
+      width: 30,
+      height: 30,
+      overflow: "hidden",
+    },
+    cornerMaskCircle: {
+      position: "absolute",
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      borderWidth: 30,
+      backgroundColor: "transparent",
+    },
 
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    paddingTop: 56,
-    paddingHorizontal: 18,
-    paddingBottom: 28,
-    justifyContent: "space-between",
-  },
+    container: { flex: 1, backgroundColor: theme.scannerBackground },
+    overlayContainer: { ...StyleSheet.absoluteFillObject },
 
-  top: { gap: 6 },
-  title: { color: "#fff", fontSize: 20, fontWeight: "700" },
-  subtitle: { color: "rgba(255,255,255,0.75)", fontSize: 13 },
+    layerTop: {
+      flex: 1,
+      paddingTop: 56,
+      paddingHorizontal: 18,
+      justifyContent: "flex-start",
+      backgroundColor: theme.scannerMask,
+    },
+    layerCenter: { flexDirection: "row", height: 250 },
+    layerSide: { flex: 1, backgroundColor: theme.scannerMask },
+    layerBottom: {
+      flex: 1,
+      paddingHorizontal: 18,
+      paddingBottom: 28,
+      justifyContent: "flex-end",
+      backgroundColor: theme.scannerMask,
+    },
 
-  frame: {
-    alignSelf: "center",
-    width: "86%",
-    height: 230,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
-    backgroundColor: "rgba(0,0,0,0.15)",
-  },
+    topContent: { gap: 6 },
+    title: {
+      color: theme.textInverse,
+      fontSize: theme.fontSizes.xlMinus,
+      fontWeight: theme.fontWeights.bold,
+    },
+    subtitle: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
 
-  bottom: {
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 18,
-    padding: 14,
-    gap: 10,
-  },
+    frameOuter: { width: "86%", height: 250, backgroundColor: "transparent" },
+    frame: {
+      flex: 1,
+      borderRadius: 30,
+      borderWidth: 3,
+      borderColor: theme.scannerFrame,
+      backgroundColor: theme.scannerFrameSoft,
+    },
 
-  text: { color: "#fff", fontSize: 14 },
-  hint: { color: "rgba(255,255,255,0.8)", textAlign: "center", fontSize: 13 },
-  error: { color: "#ffb4b4", fontWeight: "700", textAlign: "center" },
+    bottomCard: {
+      borderRadius: 18,
+      padding: 14,
+      gap: 10,
+      backgroundColor: theme.scannerMaskSoft,
+    },
+    text: { color: theme.text, fontSize: theme.fontSizes.base },
+    permissionText: {
+      color: theme.text,
+      textAlign: "center",
+      marginBottom: 14,
+      fontSize: theme.fontSizes.base,
+    },
+    loadingText: {
+      marginLeft: 10,
+      color: theme.textInverse,
+      fontSize: theme.fontSizes.base,
+    },
+    hint: { color: theme.textMuted, textAlign: "center", fontSize: theme.fontSizes.sm },
+    error: { color: theme.errorText, fontWeight: theme.fontWeights.bold, textAlign: "center" },
+    row: { flexDirection: "row", alignItems: "center" },
 
-  row: { flexDirection: "row", alignItems: "center" },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 18,
+      backgroundColor: theme.background,
+    },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#000" },
+    btnPrimary: {
+      backgroundColor: theme.primary,
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      borderRadius: 16,
+    },
+    btnPrimaryText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.extraBold,
+      fontSize: theme.fontSizes.mdPlus,
+    },
 
-  btnPrimary: { backgroundColor: "#fff", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14 },
-  btnPrimaryText: { color: "#000", fontWeight: "800" },
+    btnSecondary: {
+      backgroundColor: theme.primarySoftStrong,
+      paddingVertical: 12,
+      borderRadius: 14,
+    },
+    btnSecondaryText: {
+      color: theme.primary,
+      fontWeight: theme.fontWeights.extraBold,
+      textAlign: "center",
+      fontSize: theme.fontSizes.md,
+    },
 
-  btnSecondary: { backgroundColor: "rgba(255,255,255,0.12)", paddingVertical: 12, borderRadius: 14 },
-  btnSecondaryText: { color: "#fff", fontWeight: "800", textAlign: "center" },
-
-  fab: {
-    position: "absolute",
-    right: 16,
-    bottom: 18,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fabText: { color: "#fff", fontSize: 22, fontWeight: "800" },
-});
+    fab: {
+      position: "absolute",
+      right: 20,
+      bottom: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.4,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    fabText: {
+      color: theme.textInverse,
+      fontSize: theme.fontSizes.xl,
+      fontWeight: theme.fontWeights.extraBold,
+    },
+  });
+}

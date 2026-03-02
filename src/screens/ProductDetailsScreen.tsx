@@ -1,43 +1,34 @@
+import { Ionicons } from "@expo/vector-icons";
+import type { RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   Pressable,
-  Share,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import type { RouteProp } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { OFFFetch } from "../utils/api";
-import type { OFFProductResponse, OFFProduct } from "../types/off";
-import type { ProductDetailsParams, HistoryStackParamList } from "../navigation/types";
 import { useFavorites } from "../context/FavoritesContext";
-
-import { getPreferences } from "../utils/preferencesStorage";
-import type { Preferences } from "../types/preferences";
-import { ALLERGENS } from "../types/preferences";
-import { checkDiet, detectAllergens } from "../utils/productRules";
 import { useI18n } from "../context/I18nContext";
+import { useAppTheme } from "../context/ThemeContext";
+import type { HistoryStackParamList, ProductDetailsParams } from "../navigation/types";
+import type { OFFProduct, OFFProductResponse } from "../types/off";
+import { ALLERGENS, type Preferences } from "../types/preferences";
+import { OFFFetch } from "../utils/api";
+import { getNutriColor } from "../utils/nutriColor";
+import { getPreferences } from "../utils/preferencesStorage";
+import { checkDiet, detectAllergens } from "../utils/productRules";
 
 type Props = {
   route: RouteProp<Record<string, ProductDetailsParams>, string>;
   navigation: NativeStackNavigationProp<HistoryStackParamList>;
 };
-
-function nutriColor(grade?: string) {
-  const g = (grade ?? "").toLowerCase();
-  if (g === "a") return "#1b9e3e";
-  if (g === "b") return "#7cc043";
-  if (g === "c") return "#f6c244";
-  if (g === "d") return "#f08a2b";
-  if (g === "e") return "#d64541";
-  return "rgba(255,255,255,0.18)";
-}
 
 function fmt(n?: number, unit = "g") {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
@@ -46,17 +37,21 @@ function fmt(n?: number, unit = "g") {
 
 export default function ProductDetailsScreen({ route, navigation }: Props) {
   const { t } = useI18n();
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const barcode = route.params?.barcode;
   const { categories, addOrUpdateFavorite, removeFavorite, isFavorite, getFavorite } = useFavorites();
 
   const [loading, setLoading] = useState(true);
   const [prefs, setPrefs] = useState<Preferences | null>(null);
-
   const [error, setError] = useState<string | null>(null);
   const [product, setProduct] = useState<OFFProduct | null>(null);
 
   useEffect(() => {
-    getPreferences().then(setPrefs).catch(() => setPrefs(null));
+    getPreferences()
+      .then(setPrefs)
+      .catch(() => setPrefs(null));
   }, []);
 
   useEffect(() => {
@@ -98,11 +93,16 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
 
   const headerTitle = useMemo(
     () => product?.product_name ?? t("navigation.stack.productDetails"),
-    [product?.product_name, t]
+    [product?.product_name, t],
   );
   const favorite = getFavorite(barcode);
   const favoriteCategoryName = categories.find((cat) => cat.id === favorite?.categoryId)?.name;
   const favoriteActive = isFavorite(barcode);
+
+  const nutriBadgeStyle = useMemo(
+    () => ({ backgroundColor: getNutriColor(theme, product?.nutriscore_grade) }),
+    [product?.nutriscore_grade, theme],
+  );
 
   function onFavoritePress() {
     if (!barcode || !product) return;
@@ -118,7 +118,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
         imageUrl: product.image_url,
         nutriScore: product.nutriscore_grade?.toUpperCase(),
       },
-      "default_uncategorized"
+      "default_uncategorized",
     );
   }
 
@@ -128,7 +128,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     const shareBarcode = barcode ?? product.code ?? "—";
     const shareName = product.product_name?.trim() || t("common.unknownProduct");
     const shareBrand = product.brands?.trim() || t("common.unknownBrand");
-    const shareNutri = grade ?? "—";
+    const shareNutri = product.nutriscore_grade?.toUpperCase() ?? "—";
     const shareUrl =
       shareBarcode && shareBarcode !== "—"
         ? `https://world.openfoodfacts.org/product/${shareBarcode}`
@@ -154,7 +154,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
-        <Text style={[styles.muted, { marginTop: 10 }]}>{t("product.loading")}</Text>
+        <Text style={styles.loadingText}>{t("product.loading")}</Text>
       </View>
     );
   }
@@ -164,14 +164,12 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
       <View style={styles.center}>
         <Text style={styles.title}>Oups</Text>
         <Text style={styles.muted}>{error ?? t("product.failedLoad")}</Text>
-        <Text style={[styles.muted, { marginTop: 8 }]}>barcode : {barcode ?? "—"}</Text>
+        <Text style={styles.errorBarcode}>barcode : {barcode ?? "—"}</Text>
       </View>
     );
   }
 
   const grade = product.nutriscore_grade?.toUpperCase();
-
-  
   const allergensHit = prefs ? detectAllergens(product, prefs) : [];
   const dietLabel = prefs ? t(`preferences.diets.${prefs.diet}`) : t("preferences.food.none");
   const dietStatus = prefs ? checkDiet(product, prefs.diet) : { ok: true as const };
@@ -180,30 +178,32 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     (prefs && allergensHit.length > 0) ||
     (prefs && prefs.diet !== "none" && dietStatus.ok !== true);
 
-  const allergensText = allergensHit.length > 0
-    ? allergensHit
-        .map((key) => ALLERGENS.find((a) => a.key === key)?.key ?? key)
-        .map((key) => t(`preferences.allergens.${key}`))
-        .join(", ")
-    : "";
+  const allergensText =
+    allergensHit.length > 0
+      ? allergensHit
+          .map((key) => ALLERGENS.find((a) => a.key === key)?.key ?? key)
+          .map((key) => t(`preferences.allergens.${key}`))
+          .join(", ")
+      : "";
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.page} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>{headerTitle}</Text>
       <Text style={styles.muted}>
-        {(product.brands ?? t("common.unknownBrand"))} • {(product.quantity ?? t("common.unknownQuantity"))}
+        {product.brands ?? t("common.unknownBrand")} • {product.quantity ?? t("common.unknownQuantity")}
       </Text>
 
-
-      {prefs && showAlert ? (
+      {showAlert ? (
         <View style={styles.alertBox}>
           <Text style={styles.alertTitle}>⚠️ {t("product.warning")}</Text>
 
           {allergensHit.length > 0 ? (
-            <Text style={styles.alertText}>{t("product.allergensDetected", { allergens: allergensText })}</Text>
+            <Text style={styles.alertText}>
+              {t("product.allergensDetected", { allergens: allergensText })}
+            </Text>
           ) : null}
 
-          {prefs.diet !== "none" && dietStatus.ok !== true ? (
+          {prefs && prefs.diet !== "none" && dietStatus.ok !== true ? (
             <Text style={styles.alertText}>
               {t("product.dietStatus", {
                 diet: dietLabel,
@@ -219,33 +219,38 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
 
       <View style={styles.hero}>
         {product.image_url ? (
-          <View style={styles.imageContainer}>
+          <View style={[styles.imageContainer, theme.shadows.sm]}>
             <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="contain" />
           </View>
         ) : (
-          <View style={[styles.imageContainer, styles.imagePlaceholder]}>
+          <View style={[styles.imageContainer, styles.imagePlaceholder, theme.shadows.sm]}>
             <Text style={styles.muted}>{t("common.noImage")}</Text>
           </View>
         )}
 
         <View style={styles.badges}>
-          <View style={[styles.badge, { backgroundColor: nutriColor(product.nutriscore_grade) }]}>
+          <View style={[styles.badge, styles.nutriBadgeBase, nutriBadgeStyle]}>
             <Text style={styles.badgeText}>
               {t("product.nutriScore")} {grade ?? "—"}
             </Text>
           </View>
 
-          <View style={[styles.badge, styles.badgeSoft]}>
+          <View style={[styles.badge, styles.novaBadge]}>
             <Text style={styles.badgeTextSoft}>NOVA {product.nova_group ?? "—"}</Text>
           </View>
         </View>
 
         <View style={styles.favoriteRow}>
           <Pressable
-            style={[styles.heartButton, favoriteActive ? styles.heartButtonActive : null]}
+            style={[styles.heartButton, theme.shadows.sm, favoriteActive ? styles.heartButtonActive : null]}
             onPress={onFavoritePress}
           >
-            <Text style={styles.heartIcon}>{favoriteActive ? "♥" : "♡"}</Text>
+            <Ionicons
+              name={favoriteActive ? "heart" : "heart-outline"}
+              size={24}
+              color={favoriteActive ? theme.error : theme.textMuted}
+              style={styles.heartIconOffset}
+            />
           </Pressable>
           {favoriteCategoryName ? (
             <Text style={styles.favoriteSubText}>
@@ -256,35 +261,35 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
       </View>
 
       <Pressable
-        style={styles.cta}
+        style={[styles.cta, theme.shadows.md]}
         onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
       >
         <Text style={styles.ctaText}>{t("product.compare")}</Text>
       </Pressable>
 
-      <Pressable style={styles.cta} onPress={onSharePress}>
+      <Pressable style={[styles.cta, theme.shadows.md]} onPress={onSharePress}>
         <Text style={styles.ctaText}>{t("product.share")}</Text>
       </Pressable>
 
-      <View style={styles.card}>
+      <View style={[styles.card, theme.shadows.sm]}>
         <Text style={styles.cardTitle}>{t("product.nutrition")}</Text>
 
-        <Row label="Calories" value={fmt(product.nutriments?.["energy-kcal_100g"], "kcal")} />
-        <Row label="Graisses" value={fmt(product.nutriments?.fat_100g)} />
-        <Row label="Saturées" value={fmt(product.nutriments?.["saturated-fat_100g"])} />
-        <Row label="Glucides" value={fmt(product.nutriments?.carbohydrates_100g)} />
-        <Row label="Sucres" value={fmt(product.nutriments?.sugars_100g)} />
-        <Row label="Fibres" value={fmt(product.nutriments?.fiber_100g)} />
-        <Row label="Protéines" value={fmt(product.nutriments?.proteins_100g)} />
-        <Row label="Sel" value={fmt(product.nutriments?.salt_100g)} />
+        <NutritionRow styles={styles} label="Calories" value={fmt(product.nutriments?.["energy-kcal_100g"], "kcal")} />
+        <NutritionRow styles={styles} label="Graisses" value={fmt(product.nutriments?.fat_100g)} />
+        <NutritionRow styles={styles} label="Saturées" value={fmt(product.nutriments?.["saturated-fat_100g"])} />
+        <NutritionRow styles={styles} label="Glucides" value={fmt(product.nutriments?.carbohydrates_100g)} />
+        <NutritionRow styles={styles} label="Sucres" value={fmt(product.nutriments?.sugars_100g)} />
+        <NutritionRow styles={styles} label="Fibres" value={fmt(product.nutriments?.fiber_100g)} />
+        <NutritionRow styles={styles} label="Protéines" value={fmt(product.nutriments?.proteins_100g)} />
+        <NutritionRow styles={styles} label="Sel" value={fmt(product.nutriments?.salt_100g)} />
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, theme.shadows.sm]}>
         <Text style={styles.cardTitle}>{t("product.ingredients")}</Text>
         <Text style={styles.body}>{product.ingredients_text?.trim() || "—"}</Text>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, theme.shadows.sm]}>
         <Text style={styles.cardTitle}>{t("product.allergensTags")}</Text>
         <Text style={styles.body}>{product.allergens_tags?.join(", ") || "—"}</Text>
       </View>
@@ -292,7 +297,15 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function NutritionRow({
+  styles,
+  label,
+  value,
+}: {
+  styles: ReturnType<typeof createStyles>;
+  label: string;
+  value: string;
+}) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -301,77 +314,191 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c" },
-  content: { padding: 16, paddingBottom: 30, gap: 14 },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: { flex: 1, backgroundColor: theme.background },
+    contentContainer: {
+      padding: theme.layout.screenPadding,
+      paddingBottom: theme.spacing.xxl,
+      gap: theme.spacing.lg,
+    },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#0b0b0c" },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 18,
+      backgroundColor: theme.background,
+    },
+    loadingText: {
+      marginTop: theme.spacing.sm,
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+    },
 
-  title: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
-  body: { color: "rgba(255,255,255,0.85)", fontSize: 14, lineHeight: 20 },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xxl,
+      fontWeight: theme.fontWeights.heavy,
+      letterSpacing: -0.5,
+    },
+    muted: {
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: theme.fontWeights.medium,
+    },
+    body: { color: theme.text, fontSize: theme.fontSizes.md, lineHeight: 22 },
+    errorBarcode: {
+      marginTop: theme.spacing.sm,
+      color: theme.textMuted,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: theme.fontWeights.medium,
+    },
 
-  alertBox: {
-    backgroundColor: "rgba(214,69,65,0.18)",
-    borderColor: "rgba(214,69,65,0.35)",
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 12,
-  },
-  alertTitle: { color: "#fff", fontWeight: "900", marginBottom: 6 },
-  alertText: { color: "rgba(255,255,255,0.85)", fontWeight: "700", lineHeight: 18 },
+    alertBox: {
+      backgroundColor: theme.errorSoft,
+      borderColor: theme.errorBorder,
+      borderWidth: 1,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    alertTitle: {
+      color: theme.error,
+      fontWeight: theme.fontWeights.heavy,
+      marginBottom: 4,
+    },
+    alertText: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.semiBold,
+      lineHeight: 18,
+    },
 
-  hero: { marginTop: 6, gap: 12 },
+    hero: { marginTop: 8, gap: 14 },
 
-  imageContainer: {
-    width: "100%",
-    height: 220,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  image: { width: "92%", height: "92%" },
-  imagePlaceholder: { alignItems: "center", justifyContent: "center" },
+    imageContainer: {
+      width: "100%",
+      height: 240,
+      backgroundColor: theme.imagePlaceholder,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.xl,
+      justifyContent: "center",
+      alignItems: "center",
+      overflow: "hidden",
+      borderWidth: 1,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 3,
+    },
+    image: { width: "95%", height: "95%" },
+    imagePlaceholder: { alignItems: "center", justifyContent: "center" },
 
-  badges: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-  badge: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999 },
-  badgeText: { color: "#fff", fontWeight: "900", fontSize: 13 },
-  badgeSoft: { backgroundColor: "rgba(255,255,255,0.10)" },
-  badgeTextSoft: { color: "rgba(255,255,255,0.92)", fontWeight: "900", fontSize: 13 },
-  favoriteRow: { marginTop: 2, flexDirection: "row", alignItems: "center", gap: 10 },
-  heartButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  heartButtonActive: {
-    backgroundColor: "rgba(239,68,68,0.22)",
-    borderColor: "rgba(248,113,113,0.5)",
-  },
-  heartIcon: { color: "#fff", fontSize: 22, lineHeight: 22, fontWeight: "900" },
-  favoriteSubText: { color: "rgba(191,219,254,0.85)", fontSize: 12 },
+    badges: { flexDirection: "row", gap: theme.spacing.sm, flexWrap: "wrap", marginTop: 4 },
+    badge: {
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.lg,
+      borderRadius: theme.borderRadius.pill,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    nutriBadgeBase: {},
+    novaBadge: { backgroundColor: theme.badgeSoft },
+    badgeText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.sm,
+      letterSpacing: 0.5,
+    },
+    badgeTextSoft: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.extraBold,
+      fontSize: theme.fontSizes.sm,
+    },
 
-  card: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 14,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  cardTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
+    favoriteRow: {
+      marginTop: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+    },
+    heartButton: {
+      width: 50,
+      height: 50,
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    heartButtonActive: {
+      backgroundColor: theme.errorSoft,
+      borderColor: theme.errorBorder,
+    },
+    favoriteSubText: {
+      color: theme.primary,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: theme.fontWeights.semiBold,
+    },
 
-  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
-  rowLabel: { color: "rgba(255,255,255,0.75)" },
-  rowValue: { color: "#fff", fontWeight: "700" },
+    card: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.lg,
+      gap: theme.spacing.md,
+      borderWidth: 1,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    cardTitle: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.heavy,
+      fontSize: theme.fontSizes.lg,
+      letterSpacing: -0.2,
+    },
 
-  cta: { marginTop: 10, backgroundColor: "rgba(255,255,255,0.10)", padding: 12, borderRadius: 16 },
-  ctaText: { color: "#fff", fontWeight: "900", textAlign: "center" },
-});
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.dividerSoft,
+    },
+    rowLabel: { color: theme.textMuted, fontSize: theme.fontSizes.md },
+    rowValue: {
+      color: theme.text,
+      fontWeight: theme.fontWeights.extraBold,
+      fontSize: theme.fontSizes.md,
+    },
+
+    cta: {
+      marginTop: 12,
+      backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.lg,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    ctaText: {
+      color: theme.textInverse,
+      fontWeight: theme.fontWeights.heavy,
+      textAlign: "center",
+      fontSize: theme.fontSizes.md,
+      letterSpacing: 0.5,
+    },
+    heartIconOffset: { marginTop: 2 },
+  });
+}
