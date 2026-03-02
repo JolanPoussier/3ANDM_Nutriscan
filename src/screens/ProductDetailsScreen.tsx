@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -120,6 +122,34 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     );
   }
 
+  async function onSharePress() {
+    if (!product) return;
+
+    const shareBarcode = barcode ?? product.code ?? "—";
+    const shareName = product.product_name?.trim() || t("common.unknownProduct");
+    const shareBrand = product.brands?.trim() || t("common.unknownBrand");
+    const shareNutri = grade ?? "—";
+    const shareUrl =
+      shareBarcode && shareBarcode !== "—"
+        ? `https://world.openfoodfacts.org/product/${shareBarcode}`
+        : "https://world.openfoodfacts.org";
+
+    try {
+      await Share.share({
+        title: shareName,
+        message: t("product.shareText", {
+          name: shareName,
+          brand: shareBrand,
+          barcode: shareBarcode,
+          nutri: shareNutri,
+          url: shareUrl,
+        }),
+      });
+    } catch {
+      Alert.alert(t("product.shareErrorTitle"), t("product.shareErrorMessage"));
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -230,6 +260,10 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
         onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
       >
         <Text style={styles.ctaText}>{t("product.compare")}</Text>
+      </Pressable>
+
+      <Pressable style={styles.cta} onPress={onSharePress}>
+        <Text style={styles.ctaText}>{t("product.share")}</Text>
       </Pressable>
 
       <View style={styles.card}>
