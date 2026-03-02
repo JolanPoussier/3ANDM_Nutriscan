@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -17,6 +17,10 @@ import { useFavorites } from "../context/FavoritesContext";
 import { useAppTheme } from "../context/ThemeContext";
 import CategoryPickerModal from "../components/CategoryPickerModal";
 import { getNutriColor } from "../utils/nutriColor";
+import { OFFFetch } from "../utils/api";
+import type { OFFProductResponse } from "../types/off";
+import { resolveProductImageUrl } from "../utils/productImage";
+import { normalizeNutriGrade } from "../utils/nutriScore";
 
 type Props = NativeStackScreenProps<FavoritesStackParamList, "Favoris">;
 
@@ -35,6 +39,7 @@ export default function FavoritesScreen({ navigation }: Props) {
   const [newCategory, setNewCategory] = useState("");
   const [moveTargetBarcode, setMoveTargetBarcode] = useState<string | null>(null);
   const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<string[]>([]);
+  const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
 
   const grouped = useMemo(() => {
     const map = new Map(categories.map((cat) => [cat.id, [] as typeof favorites]));
@@ -49,6 +54,46 @@ export default function FavoritesScreen({ navigation }: Props) {
     () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
     [theme],
   );
+
+  useEffect(() => {
+    const missing = favorites
+      .filter((item) => !item.imageUrl && !resolvedImages[item.barcode])
+      .map((item) => item.barcode);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+
+    async function hydrateImages() {
+      const entries = await Promise.all(
+        missing.map(async (barcode) => {
+          try {
+            const data = await OFFFetch<OFFProductResponse>(`product/${barcode}`);
+            const url = resolveProductImageUrl(data?.product);
+            return url ? ([barcode, url] as const) : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      const next = entries.filter((e): e is readonly [string, string] => Boolean(e));
+      if (next.length === 0) return;
+
+      setResolvedImages((prev) => {
+        const merged = { ...prev };
+        next.forEach(([barcode, url]) => {
+          merged[barcode] = url;
+        });
+        return merged;
+      });
+    }
+
+    hydrateImages();
+    return () => {
+      cancelled = true;
+    };
+  }, [favorites, resolvedImages]);
 
   function onAddCategory() {
     const name = newCategory.trim();
@@ -125,48 +170,51 @@ export default function FavoritesScreen({ navigation }: Props) {
             {collapsedCategoryIds.includes(category.id) ? null : items.length === 0 ? (
               <Text style={styles.muted}>Aucun produit dans cette catégorie.</Text>
             ) : (
-              items.map((item) => (
-                <Pressable
-                  key={item.barcode}
-                  onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
-                  style={styles.item}
-                >
-                  <View style={styles.image}>
-                    {item.imageUrl ? (
-                      <Image source={{ uri: item.imageUrl }} style={styles.image} />
-                    ) : (
-                      <View style={styles.imagePlaceholder}>
-                        <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={styles.itemBody}>
-                    <Text style={styles.itemName} numberOfLines={2}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.itemBrand} numberOfLines={1}>
-                      {item.brand}
-                    </Text>
-                    <View style={styles.itemActions}>
-                      <Pressable style={styles.smallButton} onPress={() => onMove(item.barcode)}>
-                        <Ionicons name="folder-open-outline" size={14} color={theme.primary} />
-                      </Pressable>
-                      <Pressable style={styles.trashButton} onPress={() => removeFavorite(item.barcode)}>
-                        <Ionicons name="trash-outline" size={16} color={theme.error} />
-                      </Pressable>
+              items.map((item) => {
+                const imageUrl = item.imageUrl || resolvedImages[item.barcode];
+                return (
+                  <Pressable
+                    key={item.barcode}
+                    onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
+                    style={styles.item}
+                  >
+                    <View style={styles.image}>
+                      {imageUrl ? (
+                        <Image source={{ uri: imageUrl }} style={styles.image} />
+                      ) : (
+                        <View style={styles.imagePlaceholder}>
+                          <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
+                        </View>
+                      )}
                     </View>
-                  </View>
+
+                    <View style={styles.itemBody}>
+                      <Text style={styles.itemName} numberOfLines={2}>
+                        {item.name}
+                      </Text>
+                      <Text style={styles.itemBrand} numberOfLines={1}>
+                        {item.brand}
+                      </Text>
+                      <View style={styles.itemActions}>
+                        <Pressable style={styles.smallButton} onPress={() => onMove(item.barcode)}>
+                          <Ionicons name="folder-open-outline" size={14} color={theme.primary} />
+                        </Pressable>
+                        <Pressable style={styles.trashButton} onPress={() => removeFavorite(item.barcode)}>
+                          <Ionicons name="trash-outline" size={16} color={theme.error} />
+                        </Pressable>
+                      </View>
+                    </View>
 
                   <View style={[styles.nutri, nutriStyle(item.nutriScore)]}>
-                    {item.nutriScore && item.nutriScore.toUpperCase() !== "UNKNOWN" ? (
-                      <Text style={styles.nutriText}>{item.nutriScore}</Text>
+                    {normalizeNutriGrade(item.nutriScore) ? (
+                      <Text style={styles.nutriText}>{normalizeNutriGrade(item.nutriScore)}</Text>
                     ) : (
-                      <Ionicons name="help" size={18} color={theme.textInverse} />
+                      <Text style={styles.nutriText}>—</Text>
                     )}
                   </View>
-                </Pressable>
-              ))
+                  </Pressable>
+                );
+              })
             )}
           </View>
         ))}
@@ -276,7 +324,12 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       borderRadius: theme.borderRadius.md,
       backgroundColor: theme.imagePlaceholder,
     },
-    imagePlaceholder: { alignItems: "center", justifyContent: "center" },
+    imagePlaceholder: {
+      width: "100%",
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+    },
     itemBody: { flex: 1, gap: theme.spacing.xs },
     itemName: {
       color: theme.text,

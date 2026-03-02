@@ -4,6 +4,9 @@ export type OFFProduct = {
     brands?: string;
     quantity?: string;
     image_url?: string;
+    image_front_url?: string;
+    image_front_small_url?: string;
+    image_small_url?: string;
     nutriscore_grade?: string; // a-e
     nova_group?: number; // 1-4
     ecoscore_grade?: string; // a-e

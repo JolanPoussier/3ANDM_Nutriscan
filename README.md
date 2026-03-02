@@ -6,6 +6,7 @@ Jolan:
 -useDebounce
 -DarkMode
 -FavoriteSection
+-theme
 
 TODO: Drag and Drop
 Style (Theme)

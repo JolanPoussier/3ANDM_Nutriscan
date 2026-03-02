@@ -20,6 +20,8 @@ import { useDebounce } from "../hooks/useDebounce";
 import type { SearchStackParamList } from "../navigation/types";
 import { OFFSearch } from "../utils/api";
 import { getNutriColor } from "../utils/nutriColor";
+import { normalizeNutriGrade } from "../utils/nutriScore";
+import { normalizeImageUrl } from "../utils/productImage";
 
 type Props = NativeStackScreenProps<SearchStackParamList, "Recherche">;
 
@@ -34,6 +36,9 @@ type SearchHit = {
   brands_tags?: string[];
   image_url?: string;
   image_front_url?: string;
+  image_front_small_url?: string;
+  image_small_url?: string;
+  image_thumb_url?: string;
   nutriscore_grade?: string;
   _source?: {
     code?: string;
@@ -46,6 +51,9 @@ type SearchHit = {
     brands_tags?: string[];
     image_url?: string;
     image_front_url?: string;
+    image_front_small_url?: string;
+    image_small_url?: string;
+    image_thumb_url?: string;
     nutriscore_grade?: string;
   };
 };
@@ -94,8 +102,19 @@ function normalizeHit(
       asText(source.product_name ?? source.product_name_fr ?? source.product_name_en) ||
       labels.unknownProduct,
     brand,
-    imageUrl: source.image_url ?? source.image_front_url ?? hit.image_url ?? hit.image_front_url,
-    nutriScore: (source.nutriscore_grade ?? hit.nutriscore_grade)?.toUpperCase(),
+    imageUrl: normalizeImageUrl(
+      source.image_url ||
+      source.image_front_url ||
+      source.image_front_small_url ||
+      source.image_small_url ||
+      source.image_thumb_url ||
+      hit.image_url ||
+      hit.image_front_url ||
+      hit.image_front_small_url ||
+      hit.image_small_url ||
+      hit.image_thumb_url,
+    ),
+    nutriScore: normalizeNutriGrade(source.nutriscore_grade ?? hit.nutriscore_grade) ?? undefined,
   };
 }
 
@@ -125,7 +144,7 @@ export default function SearchScreen({ navigation }: Props) {
       page: nextPage,
       size: PAGE_SIZE,
       sort_by: "unique_scans_n",
-      fields: "code,product_name,product_name_en,brands,image_url,image_front_url,nutriscore_grade",
+      fields: "code,product_name,product_name_en,brands,image_url,image_front_url,image_front_small_url,image_small_url,image_thumb_url,nutriscore_grade",
     });
 
     const source = data.hits ?? data.products ?? [];
@@ -281,10 +300,10 @@ export default function SearchScreen({ navigation }: Props) {
               </View>
 
               <View style={[styles.badge, nutriBadgeStyle(item.nutriScore)]}>
-                {item.nutriScore && item.nutriScore.toUpperCase() !== "UNKNOWN" ? (
+                {item.nutriScore ? (
                   <Text style={styles.badgeText}>{item.nutriScore}</Text>
                 ) : (
-                  <Ionicons name="help" size={20} color={theme.textInverse} />
+                  <Text style={styles.badgeText}>—</Text>
                 )}
               </View>
             </Pressable>
@@ -371,7 +390,12 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       borderRadius: theme.borderRadius.md,
       backgroundColor: theme.imagePlaceholder,
     },
-    imagePlaceholder: { alignItems: "center", justifyContent: "center" },
+    imagePlaceholder: {
+      width: "100%",
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
     itemContent: { flex: 1, gap: theme.spacing.xs },
     itemTitle: {

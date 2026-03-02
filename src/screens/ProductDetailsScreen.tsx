@@ -23,7 +23,9 @@ import { ALLERGENS, type Preferences } from "../types/preferences";
 import { OFFFetch } from "../utils/api";
 import { getNutriColor } from "../utils/nutriColor";
 import { getPreferences } from "../utils/preferencesStorage";
+import { resolveProductImageUrl } from "../utils/productImage";
 import { checkDiet, detectAllergens } from "../utils/productRules";
+import { normalizeNutriGrade } from "../utils/nutriScore";
 
 type Props = {
   route: RouteProp<Record<string, ProductDetailsParams>, string>;
@@ -37,7 +39,7 @@ function fmt(n?: number, unit = "g") {
 
 export default function ProductDetailsScreen({ route, navigation }: Props) {
   const { t } = useI18n();
-  const { theme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const barcode = route.params?.barcode;
@@ -115,8 +117,8 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
         barcode,
         name: product.product_name?.trim() || t("common.unknownProduct"),
         brand: product.brands?.trim() || t("common.unknownBrand"),
-        imageUrl: product.image_url,
-        nutriScore: product.nutriscore_grade?.toUpperCase(),
+        imageUrl: resolveProductImageUrl(product),
+        nutriScore: normalizeNutriGrade(product.nutriscore_grade) ?? undefined,
       },
       "default_uncategorized",
     );
@@ -128,7 +130,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     const shareBarcode = barcode ?? product.code ?? "—";
     const shareName = product.product_name?.trim() || t("common.unknownProduct");
     const shareBrand = product.brands?.trim() || t("common.unknownBrand");
-    const shareNutri = product.nutriscore_grade?.toUpperCase() ?? "—";
+    const shareNutri = normalizeNutriGrade(product.nutriscore_grade) ?? "—";
     const shareUrl =
       shareBarcode && shareBarcode !== "—"
         ? `https://world.openfoodfacts.org/product/${shareBarcode}`
@@ -169,7 +171,8 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     );
   }
 
-  const grade = product.nutriscore_grade?.toUpperCase();
+  const grade = normalizeNutriGrade(product.nutriscore_grade);
+  const productImageUrl = resolveProductImageUrl(product);
   const allergensHit = prefs ? detectAllergens(product, prefs) : [];
   const dietLabel = prefs ? t(`preferences.diets.${prefs.diet}`) : t("preferences.food.none");
   const dietStatus = prefs ? checkDiet(product, prefs.diet) : { ok: true as const };
@@ -188,10 +191,36 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>{headerTitle}</Text>
-      <Text style={styles.muted}>
-        {product.brands ?? t("common.unknownBrand")} • {product.quantity ?? t("common.unknownQuantity")}
-      </Text>
+      <View style={styles.headerRow}>
+        <View style={styles.headerTextWrap}>
+          <Text style={styles.title}>{headerTitle}</Text>
+          <Text style={styles.muted}>
+            {product.brands ?? t("common.unknownBrand")} • {product.quantity ?? t("common.unknownQuantity")}
+          </Text>
+          {favoriteCategoryName && favorite?.categoryId !== "default_uncategorized" ? (
+            <Text style={styles.favoriteSubText}>{favoriteCategoryName}</Text>
+          ) : null}
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable style={[styles.actionIconButton, isDark ? theme.shadows.sm : null]} onPress={onSharePress}>
+            <Ionicons name="share-social-outline" size={20} color={theme.text} />
+          </Pressable>
+          <Pressable
+            style={[
+              styles.actionIconButton,
+              isDark ? theme.shadows.sm : null,
+              favoriteActive ? styles.heartButtonActive : null,
+            ]}
+            onPress={onFavoritePress}
+          >
+            <Ionicons
+              name={favoriteActive ? "heart" : "heart-outline"}
+              size={20}
+              color={favoriteActive ? theme.error : theme.textMuted}
+            />
+          </Pressable>
+        </View>
+      </View>
 
       {showAlert ? (
         <View style={styles.alertBox}>
@@ -218,9 +247,9 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
       ) : null}
 
       <View style={styles.hero}>
-        {product.image_url ? (
+        {productImageUrl ? (
           <View style={[styles.imageContainer, theme.shadows.sm]}>
-            <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="contain" />
+            <Image source={{ uri: productImageUrl }} style={styles.image} resizeMode="contain" />
           </View>
         ) : (
           <View style={[styles.imageContainer, styles.imagePlaceholder, theme.shadows.sm]}>
@@ -240,24 +269,6 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        <View style={styles.favoriteRow}>
-          <Pressable
-            style={[styles.heartButton, theme.shadows.sm, favoriteActive ? styles.heartButtonActive : null]}
-            onPress={onFavoritePress}
-          >
-            <Ionicons
-              name={favoriteActive ? "heart" : "heart-outline"}
-              size={24}
-              color={favoriteActive ? theme.error : theme.textMuted}
-              style={styles.heartIconOffset}
-            />
-          </Pressable>
-          {favoriteCategoryName ? (
-            <Text style={styles.favoriteSubText}>
-              {t("product.category")}: {favoriteCategoryName}
-            </Text>
-          ) : null}
-        </View>
       </View>
 
       <Pressable
@@ -265,10 +276,6 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
         onPress={() => navigation.navigate("CompareHub", { leftBarcode: barcode! })}
       >
         <Text style={styles.ctaText}>{t("product.compare")}</Text>
-      </Pressable>
-
-      <Pressable style={[styles.cta, theme.shadows.md]} onPress={onSharePress}>
-        <Text style={styles.ctaText}>{t("product.share")}</Text>
       </Pressable>
 
       <View style={[styles.card, theme.shadows.sm]}>
@@ -341,6 +348,32 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       fontSize: theme.fontSizes.xxl,
       fontWeight: theme.fontWeights.heavy,
       letterSpacing: -0.5,
+    },
+    headerRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: theme.spacing.md,
+    },
+    headerTextWrap: {
+      flex: 1,
+      gap: theme.spacing.xs,
+    },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      marginTop: 2,
+    },
+    actionIconButton: {
+      width: 40,
+      height: 40,
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderRadius: theme.borderRadius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
     },
     muted: {
       color: theme.textMuted,
@@ -418,26 +451,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       fontSize: theme.fontSizes.sm,
     },
 
-    favoriteRow: {
-      marginTop: 6,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.md,
-    },
-    heartButton: {
-      width: 50,
-      height: 50,
-      backgroundColor: theme.card,
-      borderColor: theme.border,
-      borderRadius: theme.borderRadius.pill,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
     heartButtonActive: {
       backgroundColor: theme.errorSoft,
       borderColor: theme.errorBorder,
@@ -499,6 +512,5 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       fontSize: theme.fontSizes.md,
       letterSpacing: 0.5,
     },
-    heartIconOffset: { marginTop: 2 },
   });
 }

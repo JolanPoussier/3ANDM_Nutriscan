@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,12 +17,16 @@ import type { HistoryStackParamList } from "../navigation/types";
 import type { HistoryItem } from "../types/history";
 import { getHistory, removeFromHistory } from "../utils/historyStorage";
 import {
+  normalizeNutriGrade,
   nutriGradeToScore,
   nutriScoreNumberToGrade,
   nutriScoreToGrade,
 } from "../utils/nutriScore";
 import { useAppTheme } from "../context/ThemeContext";
 import { getNutriColor } from "../utils/nutriColor";
+import { OFFFetch } from "../utils/api";
+import type { OFFProductResponse } from "../types/off";
+import { resolveProductImageUrl } from "../utils/productImage";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "Historique">;
 
@@ -58,6 +62,7 @@ export default function HistoryScreen({ navigation }: Props) {
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<HistoryItem[]>([]);
+  const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,6 +79,46 @@ export default function HistoryScreen({ navigation }: Props) {
       load();
     }, [load]),
   );
+
+  useEffect(() => {
+    const missing = items
+      .filter((item) => !item.imageUrl && !resolvedImages[item.barcode])
+      .map((item) => item.barcode);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+
+    async function hydrateImages() {
+      const entries = await Promise.all(
+        missing.map(async (barcode) => {
+          try {
+            const data = await OFFFetch<OFFProductResponse>(`product/${barcode}`);
+            const url = resolveProductImageUrl(data?.product);
+            return url ? ([barcode, url] as const) : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      const next = entries.filter((e): e is readonly [string, string] => Boolean(e));
+      if (next.length === 0) return;
+
+      setResolvedImages((prev) => {
+        const merged = { ...prev };
+        next.forEach(([barcode, url]) => {
+          merged[barcode] = url;
+        });
+        return merged;
+      });
+    }
+
+    hydrateImages();
+    return () => {
+      cancelled = true;
+    };
+  }, [items, resolvedImages]);
 
   const scannedCount = items.length;
 
@@ -259,31 +304,33 @@ export default function HistoryScreen({ navigation }: Props) {
           </View>
         }
         ItemSeparatorComponent={itemSeparator}
-        renderItem={({ item }) => (
-          <Pressable
-            style={[styles.card, theme.shadows.sm]}
-            onPress={() =>
-              navigation.navigate("ProductDetails", { barcode: item.barcode })
-            }
-          >
-            <View style={styles.row}>
-              <View style={styles.thumbWrap}>
-                {item.imageUrl ? (
-                  <Image
-                    source={{ uri: item.imageUrl }}
-                    style={styles.thumb}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
-                    <Ionicons
-                      name="fast-food-outline"
-                      size={24}
-                      color={theme.textMuted}
+        renderItem={({ item }) => {
+          const imageUrl = item.imageUrl || resolvedImages[item.barcode];
+          return (
+            <Pressable
+              style={[styles.card, theme.shadows.sm]}
+              onPress={() =>
+                navigation.navigate("ProductDetails", { barcode: item.barcode })
+              }
+            >
+              <View style={styles.row}>
+                <View style={styles.thumbWrap}>
+                  {imageUrl ? (
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={styles.thumb}
+                      resizeMode="contain"
                     />
-                  </View>
-                )}
-              </View>
+                  ) : (
+                    <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
+                      <Ionicons
+                        name="fast-food-outline"
+                        size={24}
+                        color={theme.textMuted}
+                      />
+                    </View>
+                  )}
+                </View>
 
               <View style={styles.flexOne}>
                 <Text style={styles.name} numberOfLines={1}>
@@ -295,16 +342,9 @@ export default function HistoryScreen({ navigation }: Props) {
 
                 <View style={styles.badgeRow}>
                   <View style={[styles.badge, itemBadgeStyle(item.nutriScore)]}>
-                    {item.nutriScore && item.nutriScore.toUpperCase() !== "UNKNOWN" ? (
-                      <Text style={styles.badgeText}>
-                        Nutri {item.nutriScore.toUpperCase()}
-                      </Text>
-                    ) : (
-                      <View style={styles.badgeUnknownRow}>
-                        <Text style={styles.badgeText}>Nutri</Text>
-                        <Ionicons name="help-circle" size={16} color={theme.textInverse} />
-                      </View>
-                    )}
+                    <Text style={styles.badgeText}>
+                      Nutri {normalizeNutriGrade(item.nutriScore) ?? "—"}
+                    </Text>
                   </View>
                   <Text style={styles.muted}>barcode: {item.barcode}</Text>
                 </View>
@@ -328,9 +368,10 @@ export default function HistoryScreen({ navigation }: Props) {
               >
                 <Text style={styles.deleteText}>✕</Text>
               </Pressable>
-            </View>
-          </Pressable>
-        )}
+              </View>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );

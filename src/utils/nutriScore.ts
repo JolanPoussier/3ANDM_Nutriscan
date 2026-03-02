@@ -34,3 +34,9 @@ export function nutriScoreNumberToGrade(score?: number): string | null {
   const rounded = Math.round(score);
   return GRADE_BY_SCORE[rounded] ?? null;
 }
+
+export function normalizeNutriGrade(grade?: string | null): string | null {
+  if (!grade) return null;
+  const value = grade.trim().toUpperCase();
+  return SCORE_BY_GRADE[value.toLowerCase()] ? value : null;
+}

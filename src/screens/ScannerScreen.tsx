@@ -10,6 +10,7 @@ import type { ScannerStackParamList } from "../navigation/types";
 import type { OFFProductResponse } from "../types/off";
 import { OFFFetch } from "../utils/api";
 import { addToHistory } from "../utils/historyStorage";
+import { resolveProductImageUrl } from "../utils/productImage";
 
 type Props = NativeStackScreenProps<ScannerStackParamList, "Scanner">;
 
@@ -82,7 +83,7 @@ export default function ScannerScreen({ navigation }: Props) {
           scannedAt: Date.now(),
           name: p.product_name ?? undefined,
           brand: p.brands ?? undefined,
-          imageUrl: p.image_url ?? undefined,
+          imageUrl: resolveProductImageUrl(p),
           nutriScore: p.nutriscore_grade ?? undefined,
         });
 
