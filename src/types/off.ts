@@ -9,6 +9,8 @@ export type OFFProduct = {
     ecoscore_grade?: string; // a-e
     ingredients_text?: string;
     allergens_tags?: string[];
+    labels_tags?: string[];
+    misc_tags?: string[];
     nutriments?: {
       "energy-kcal_100g"?: number;
       fat_100g?: number;

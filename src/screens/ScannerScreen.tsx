@@ -8,10 +8,12 @@ import type { ScannerStackParamList } from "../navigation/types";
 import { OFFFetch } from "../utils/api";
 import type { OFFProductResponse } from "../types/off";
 import { addToHistory } from "../utils/historyStorage";
+import { useI18n } from "../context/I18nContext";
 
 type Props = NativeStackScreenProps<ScannerStackParamList, "Scanner">;
 
 export default function ScannerScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +58,7 @@ export default function ScannerScreen({ navigation }: Props) {
 
         if (data?.status !== 1 || !data.product) {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          setError("Produit introuvable dans Open Food Facts.");
+          setError(t("scanner.notFound"));
           locked.current = false;
           return;
         }
@@ -79,19 +81,19 @@ export default function ScannerScreen({ navigation }: Props) {
         navigation.navigate("ProductDetails", { barcode });
       } catch (e) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setError("Erreur réseau. Vérifie ta connexion et réessaie.");
+        setError(t("scanner.networkError"));
         locked.current = false;
       } finally {
         setIsLoading(false);
       }
     },
-    [navigation]
+    [navigation, t]
   );
 
   if (!permission) {
     return (
       <View style={styles.center}>
-        <Text style={styles.text}>Chargement…</Text>
+        <Text style={styles.text}>{t("common.loading")}</Text>
       </View>
     );
   }
@@ -100,10 +102,10 @@ export default function ScannerScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <Text style={[styles.text, { textAlign: "center", marginBottom: 14 }]}>
-          NutriScan a besoin de la caméra pour scanner un code-barres.
+          {t("scanner.cameraNeed")}
         </Text>
         <Pressable style={styles.btnPrimary} onPress={requestPermission}>
-          <Text style={styles.btnPrimaryText}>Autoriser la caméra</Text>
+          <Text style={styles.btnPrimaryText}>{t("scanner.allowCamera")}</Text>
         </Pressable>
       </View>
     );
@@ -115,13 +117,13 @@ export default function ScannerScreen({ navigation }: Props) {
         style={StyleSheet.absoluteFill}
         facing="back"
         onBarcodeScanned={isLoading ? undefined : onScanned}
-        barcodeScannerSettings={{ barcodeTypes: barcodeTypes as unknown as string[] }}
+        barcodeScannerSettings={{ barcodeTypes: barcodeTypes as any }}
       />
 
       <View style={styles.overlay}>
         <View style={styles.top}>
-          <Text style={styles.title}>Scanner un produit</Text>
-          <Text style={styles.subtitle}>Place le code-barres dans le cadre</Text>
+          <Text style={styles.title}>{t("scanner.title")}</Text>
+          <Text style={styles.subtitle}>{t("scanner.subtitle")}</Text>
         </View>
 
         <View style={styles.frame} />
@@ -130,17 +132,17 @@ export default function ScannerScreen({ navigation }: Props) {
           {isLoading ? (
             <View style={styles.row}>
               <ActivityIndicator />
-              <Text style={[styles.text, { marginLeft: 10 }]}>Recherche du produit…</Text>
+              <Text style={[styles.text, { marginLeft: 10 }]}>{t("scanner.searching")}</Text>
             </View>
           ) : error ? (
             <>
               <Text style={styles.error}>{error}</Text>
               <Pressable style={styles.btnSecondary} onPress={reset}>
-                <Text style={styles.btnSecondaryText}>Rescanner</Text>
+                <Text style={styles.btnSecondaryText}>{t("common.retry")}</Text>
               </Pressable>
             </>
           ) : (
-            <Text style={styles.hint}>Astuce : évite les reflets, rapproche-toi légèrement.</Text>
+            <Text style={styles.hint}>{t("scanner.hint")}</Text>
           )}
         </View>
       </View>

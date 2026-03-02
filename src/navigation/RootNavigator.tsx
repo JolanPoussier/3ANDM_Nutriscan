@@ -12,6 +12,7 @@ import SettingsScreen from "../screens/SettingsScreen";
 import ComparatorScreen from "../screens/ComparatorScreen";
 import CompareHubScreen from "../screens/CompareHubScreen";
 import ComparePickScreen from "../screens/ComparePickScreen";
+import { useI18n } from "../context/I18nContext";
 
 import type {
   FavoritesStackParamList,
@@ -31,157 +32,189 @@ const HistoryStack = createNativeStackNavigator<HistoryStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
 function ScannerStackScreen() {
+  const { t } = useI18n();
+
   return (
     <ScannerStack.Navigator>
-      <ScannerStack.Screen name="Scanner" component={ScannerScreen} />
+      <ScannerStack.Screen
+        name="Scanner"
+        component={ScannerScreen}
+        options={{ title: t("navigation.tabs.scanner") }}
+      />
       <ScannerStack.Screen
         name="ProductDetails"
         component={ProductDetailsScreen}
-        options={{ title: "Fiche produit" }}
+        options={{ title: t("navigation.stack.productDetails") }}
       />
       <ScannerStack.Screen
         name="CompareHub"
         component={CompareHubScreen}
-        options={{ title: "Comparer" }}
+        options={{ title: t("navigation.stack.compare") }}
       />
       <ScannerStack.Screen
         name="ComparePick"
         component={ComparePickScreen}
-        options={{ title: "Choisir un produit" }}
+        options={{ title: t("navigation.stack.pickProduct") }}
       />
       <ScannerStack.Screen
         name="Comparator"
         component={ComparatorScreen}
-        options={{ title: "Comparateur" }}
+        options={{ title: t("navigation.stack.comparator") }}
       />
     </ScannerStack.Navigator>
   );
 }
 
 function SearchStackScreen() {
+  const { t } = useI18n();
+
   return (
     <SearchStack.Navigator>
-      <SearchStack.Screen name="Recherche" component={SearchScreen} />
+      <SearchStack.Screen
+        name="Recherche"
+        component={SearchScreen}
+        options={{ title: t("navigation.tabs.search") }}
+      />
       <SearchStack.Screen
         name="ProductDetails"
         component={ProductDetailsScreen}
-        options={{ title: "Fiche produit" }}
+        options={{ title: t("navigation.stack.productDetails") }}
       />
       <SearchStack.Screen
         name="CompareHub"
         component={CompareHubScreen}
-        options={{ title: "Comparer" }}
+        options={{ title: t("navigation.stack.compare") }}
       />
       <SearchStack.Screen
         name="ComparePick"
         component={ComparePickScreen}
-        options={{ title: "Choisir un produit" }}
+        options={{ title: t("navigation.stack.pickProduct") }}
       />
       <SearchStack.Screen
         name="Comparator"
         component={ComparatorScreen}
-        options={{ title: "Comparateur" }}
+        options={{ title: t("navigation.stack.comparator") }}
       />
     </SearchStack.Navigator>
   );
 }
 
 function HistoryStackScreen() {
+  const { t } = useI18n();
+
   return (
     <HistoryStack.Navigator>
-      <HistoryStack.Screen name="Historique" component={HistoryScreen} />
+      <HistoryStack.Screen
+        name="Historique"
+        component={HistoryScreen}
+        options={{ title: t("navigation.tabs.history") }}
+      />
       <HistoryStack.Screen
         name="ProductDetails"
         component={ProductDetailsScreen}
-        options={{ title: "Fiche produit" }}
+        options={{ title: t("navigation.stack.productDetails") }}
       />
       <HistoryStack.Screen
         name="CompareHub"
         component={CompareHubScreen}
-        options={{ title: "Comparer" }}
+        options={{ title: t("navigation.stack.compare") }}
       />
       <HistoryStack.Screen
         name="ComparePick"
         component={ComparePickScreen}
-        options={{ title: "Choisir un produit" }}
+        options={{ title: t("navigation.stack.pickProduct") }}
       />
       <HistoryStack.Screen
         name="Comparator"
         component={ComparatorScreen}
-        options={{ title: "Comparateur" }}
+        options={{ title: t("navigation.stack.comparator") }}
       />
     </HistoryStack.Navigator>
   );
 }
 
 function FavoritesStackScreen() {
+  const { t } = useI18n();
+
   return (
     <FavoritesStack.Navigator>
-      <FavoritesStack.Screen name="Favoris" component={FavoritesScreen} />
+      <FavoritesStack.Screen
+        name="Favoris"
+        component={FavoritesScreen}
+        options={{ title: t("navigation.tabs.favorites") }}
+      />
       <FavoritesStack.Screen
         name="ProductDetails"
         component={ProductDetailsScreen}
-        options={{ title: "Fiche produit" }}
+        options={{ title: t("navigation.stack.productDetails") }}
       />
     </FavoritesStack.Navigator>
   );
 }
 
 function SettingsStackScreen() {
+  const { t } = useI18n();
+
   return (
     <SettingsStack.Navigator>
-      <SettingsStack.Screen name="Paramètres" component={SettingsScreen} />
+      <SettingsStack.Screen
+        name="Paramètres"
+        component={SettingsScreen}
+        options={{ title: t("navigation.tabs.settings") }}
+      />
       <SettingsStack.Screen
         name="ProductDetails"
         component={ProductDetailsScreen}
-        options={{ title: "Fiche produit" }}
+        options={{ title: t("navigation.stack.productDetails") }}
       />
       <SettingsStack.Screen
         name="CompareHub"
         component={CompareHubScreen}
-        options={{ title: "Comparer" }}
+        options={{ title: t("navigation.stack.compare") }}
       />
       <SettingsStack.Screen
         name="ComparePick"
         component={ComparePickScreen}
-        options={{ title: "Choisir un produit" }}
+        options={{ title: t("navigation.stack.pickProduct") }}
       />
       <SettingsStack.Screen
         name="Comparator"
         component={ComparatorScreen}
-        options={{ title: "Comparateur" }}
+        options={{ title: t("navigation.stack.comparator") }}
       />
     </SettingsStack.Navigator>
   );
 }
 
 export default function RootNavigator() {
+  const { t } = useI18n();
+
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen
         name="ScannerTab"
         component={ScannerStackScreen}
-        options={{ title: "Scanner" }}
+        options={{ title: t("navigation.tabs.scanner") }}
       />
       <Tab.Screen
         name="SearchTab"
         component={SearchStackScreen}
-        options={{ title: "Recherche" }}
+        options={{ title: t("navigation.tabs.search") }}
       />
       <Tab.Screen
         name="FavoritesTab"
         component={FavoritesStackScreen}
-        options={{ title: "Favoris" }}
+        options={{ title: t("navigation.tabs.favorites") }}
       />
       <Tab.Screen
         name="HistoryTab"
         component={HistoryStackScreen}
-        options={{ title: "Historique" }}
+        options={{ title: t("navigation.tabs.history") }}
       />
       <Tab.Screen
         name="SettingsTab"
         component={SettingsStackScreen}
-        options={{ title: "Paramètres" }}
+        options={{ title: t("navigation.tabs.settings") }}
       />
     </Tab.Navigator>
   );
