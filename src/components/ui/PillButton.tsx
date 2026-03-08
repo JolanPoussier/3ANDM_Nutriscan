@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
+import { useAppTheme } from "../../context/ThemeContext";
 
 type Props = {
   label: string;
@@ -12,18 +13,27 @@ type Props = {
 export default function PillButton({
   label,
   onPress,
-  textColor = "#fff",
-  backgroundColor = "rgba(255,255,255,0.10)",
+  textColor,
+  backgroundColor,
   fontSize = 12,
 }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
-    <Pressable onPress={onPress} style={[styles.button, { backgroundColor }]}>
-      <Text style={[styles.label, { color: textColor, fontSize }]}>{label}</Text>
+    <Pressable onPress={onPress} style={[styles.button, { backgroundColor: backgroundColor ?? theme.badgeSoft }]}>
+      <Text style={[styles.label, { color: textColor ?? theme.textInverse, fontSize }]}>{label}</Text>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  button: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999 },
-  label: { fontWeight: "900" },
-});
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    button: {
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md - 2,
+      borderRadius: theme.borderRadius.pill,
+    },
+    label: { fontWeight: theme.fontWeights.heavy },
+  });
+}

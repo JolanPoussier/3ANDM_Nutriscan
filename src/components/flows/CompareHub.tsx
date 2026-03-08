@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { useAppTheme } from "../../context/ThemeContext";
 import type { HistoryStackParamList } from "../../navigation/types";
 import type { HistoryItem } from "../../types/history";
-import { getHistory } from "../../utils/historyStorage";
 import { OFFFetch } from "../../utils/api";
+import { getHistory } from "../../utils/historyStorage";
 import type { OFFProductResponse } from "../../types/off";
 import PillButton from "../ui/PillButton";
 import ProductThumbnail from "../ui/ProductThumbnail";
@@ -20,6 +21,9 @@ type MiniProduct = {
 };
 
 export default function CompareHub({ navigation, route }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const leftBarcode = route.params?.leftBarcode;
   const rightBarcode = route.params?.rightBarcode;
 
@@ -33,11 +37,11 @@ export default function CompareHub({ navigation, route }: Props) {
 
   const leftFromHistory = useMemo(
     () => (leftBarcode ? history.find((h) => h.barcode === leftBarcode) : undefined),
-    [history, leftBarcode]
+    [history, leftBarcode],
   );
   const rightFromHistory = useMemo(
     () => (rightBarcode ? history.find((h) => h.barcode === rightBarcode) : undefined),
-    [history, rightBarcode]
+    [history, rightBarcode],
   );
 
   useEffect(() => {
@@ -59,6 +63,7 @@ export default function CompareHub({ navigation, route }: Props) {
         if (side === "left") setFallbackLeft(mini);
         else setFallbackRight(mini);
       } catch {
+        // ignore fallback errors
       }
     }
 
@@ -74,11 +79,21 @@ export default function CompareHub({ navigation, route }: Props) {
   }, [leftBarcode, rightBarcode, leftFromHistory, rightFromHistory]);
 
   const left: MiniProduct | undefined = leftFromHistory
-    ? { barcode: leftFromHistory.barcode, name: leftFromHistory.name, brand: leftFromHistory.brand, imageUrl: leftFromHistory.imageUrl }
+    ? {
+        barcode: leftFromHistory.barcode,
+        name: leftFromHistory.name,
+        brand: leftFromHistory.brand,
+        imageUrl: leftFromHistory.imageUrl,
+      }
     : fallbackLeft ?? undefined;
 
   const right: MiniProduct | undefined = rightFromHistory
-    ? { barcode: rightFromHistory.barcode, name: rightFromHistory.name, brand: rightFromHistory.brand, imageUrl: rightFromHistory.imageUrl }
+    ? {
+        barcode: rightFromHistory.barcode,
+        name: rightFromHistory.name,
+        brand: rightFromHistory.brand,
+        imageUrl: rightFromHistory.imageUrl,
+      }
     : fallbackRight ?? undefined;
 
   const canCompare = Boolean(leftBarcode && rightBarcode);
@@ -107,9 +122,7 @@ export default function CompareHub({ navigation, route }: Props) {
       <Pressable
         disabled={!canCompare}
         style={[styles.primaryBtn, !canCompare && styles.primaryBtnDisabled]}
-        onPress={() =>
-          navigation.navigate("Comparator", { leftBarcode: leftBarcode!, rightBarcode: rightBarcode! })
-        }
+        onPress={() => navigation.navigate("Comparator", { leftBarcode: leftBarcode!, rightBarcode: rightBarcode! })}
       >
         <Text style={styles.primaryBtnText}>Comparer</Text>
       </Pressable>
@@ -130,16 +143,15 @@ function SlotCard({
   onAdd: () => void;
   onRemove: () => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const has = Boolean(barcode);
 
   return (
     <View style={styles.card}>
       <View style={styles.cardTop}>
         <Text style={styles.cardLabel}>{label}</Text>
-
-        {has ? (
-          <PillButton label="Retirer" onPress={onRemove} />
-        ) : null}
+        {has ? <PillButton label="Retirer" onPress={onRemove} textColor={theme.text} /> : null}
       </View>
 
       {!has ? (
@@ -149,9 +161,9 @@ function SlotCard({
         </Pressable>
       ) : (
         <View style={styles.productRow}>
-          <ProductThumbnail imageUrl={item?.imageUrl} size={56} radius={14} />
+          <ProductThumbnail imageUrl={item?.imageUrl} size={56} radius={theme.borderRadius.md} />
 
-          <View style={{ flex: 1 }}>
+          <View style={styles.flexOne}>
             <Text style={styles.pName} numberOfLines={2}>
               {item?.name ?? "Produit"}
             </Text>
@@ -160,45 +172,62 @@ function SlotCard({
             </Text>
           </View>
 
-          <PillButton label="Changer" onPress={onAdd} />
+          <PillButton label="Changer" onPress={onAdd} textColor={theme.text} />
         </View>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c", padding: 16, gap: 12 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "900" },
-  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: {
+      flex: 1,
+      backgroundColor: theme.background,
+      padding: theme.layout.screenPadding,
+      gap: theme.spacing.md,
+    },
+    title: {
+      color: theme.text,
+      fontSize: theme.fontSizes.xl,
+      fontWeight: theme.fontWeights.heavy,
+    },
+    muted: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
 
-  card: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 10,
-  },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardLabel: { color: "rgba(255,255,255,0.85)", fontWeight: "900" },
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md - 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      gap: theme.spacing.sm + 2,
+    },
+    cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    cardLabel: { color: theme.textMuted, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.sm },
 
-  addBox: {
-    height: 84,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    backgroundColor: "rgba(0,0,0,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addPlus: { color: "#fff", fontSize: 26, fontWeight: "900" },
-  addText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
+    addBox: {
+      height: 84,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.neutralSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    addPlus: { color: theme.text, fontSize: theme.fontSizes.xxl, fontWeight: theme.fontWeights.heavy },
+    addText: { color: theme.textMuted, fontWeight: theme.fontWeights.extraBold },
 
-  productRow: { flexDirection: "row", gap: 12, alignItems: "center" },
-  pName: { color: "#fff", fontWeight: "900", fontSize: 13 },
+    productRow: { flexDirection: "row", gap: theme.spacing.sm + 4, alignItems: "center" },
+    flexOne: { flex: 1 },
+    pName: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.base },
 
-  primaryBtn: { marginTop: 4, paddingVertical: 14, borderRadius: 16, backgroundColor: "#fff" },
-  primaryBtnDisabled: { opacity: 0.35 },
-  primaryBtnText: { textAlign: "center", color: "#000", fontWeight: "900" },
-});
+    primaryBtn: {
+      marginTop: theme.spacing.xs,
+      paddingVertical: theme.spacing.md,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.primary,
+    },
+    primaryBtnDisabled: { opacity: 0.45 },
+    primaryBtnText: { textAlign: "center", color: theme.textInverse, fontWeight: theme.fontWeights.heavy },
+  });
+}

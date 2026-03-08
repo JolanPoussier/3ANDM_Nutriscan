@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useAppTheme } from "../../context/ThemeContext";
 import type { WeeklyScorePoint } from "../../utils/historyMetrics";
 import { nutriColor } from "../../utils/nutriColor";
 import { nutriScoreToGrade } from "../../utils/nutriScore";
@@ -23,6 +24,8 @@ export default function HistoryDashboard({
   worstGrade,
   weeklyScores,
 }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const chartMax = useMemo(() => Math.max(5, ...weeklyScores.map((point) => point.average)), [weeklyScores]);
 
   return (
@@ -67,7 +70,7 @@ export default function HistoryDashboard({
                       styles.bar,
                       {
                         height: `${Math.max(8, (point.average / chartMax) * 100)}%`,
-                        backgroundColor: nutriColor(nutriScoreToGrade(point.average) ?? undefined),
+                        backgroundColor: nutriColor(theme, nutriScoreToGrade(point.average) ?? undefined),
                       },
                     ]}
                   />
@@ -88,51 +91,53 @@ export default function HistoryDashboard({
   );
 }
 
-const styles = StyleSheet.create({
-  dashboardMuted: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
-  dashboardCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 10,
-  },
-  dashboardTitle: { color: "#fff", fontSize: 17, fontWeight: "900" },
-  globalScoreRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  globalLabel: { color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "700" },
-  statsRow: { flexDirection: "row", gap: 8 },
-  statCard: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    padding: 8,
-    gap: 4,
-  },
-  statLabel: { color: "rgba(255,255,255,0.65)", fontSize: 11, fontWeight: "600" },
-  statValue: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  chartWrap: {
-    marginTop: 4,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    padding: 10,
-    gap: 8,
-  },
-  chartTitle: { color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "800" },
-  chartBarsRow: { flexDirection: "row", alignItems: "flex-end", height: 96, gap: 6 },
-  barColumn: {
-    flex: 1,
-    height: "100%",
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  bar: { width: "100%", borderRadius: 6 },
-  chartLabelsRow: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
-  chartLabel: { flex: 1, color: "rgba(255,255,255,0.6)", fontSize: 10, textAlign: "center" },
-});
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    dashboardMuted: { color: theme.textMuted, fontSize: theme.fontSizes.xs },
+    dashboardCard: {
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md - 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      gap: theme.spacing.sm + 2,
+    },
+    dashboardTitle: { color: theme.text, fontSize: theme.fontSizes.lgMinus, fontWeight: theme.fontWeights.heavy },
+    globalScoreRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    globalLabel: { color: theme.text, fontSize: theme.fontSizes.sm, fontWeight: theme.fontWeights.bold },
+    statsRow: { flexDirection: "row", gap: theme.spacing.sm },
+    statCard: {
+      flex: 1,
+      backgroundColor: theme.cardSoft,
+      borderRadius: theme.borderRadius.sm + 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      padding: theme.spacing.sm,
+      gap: theme.spacing.xs,
+    },
+    statLabel: { color: theme.textMuted, fontSize: theme.fontSizes.xs, fontWeight: theme.fontWeights.semiBold },
+    statValue: { color: theme.text, fontSize: theme.fontSizes.lg, fontWeight: theme.fontWeights.heavy },
+    chartWrap: {
+      marginTop: theme.spacing.xs,
+      backgroundColor: theme.cardSoft,
+      borderRadius: theme.borderRadius.sm + 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      padding: theme.spacing.sm + 2,
+      gap: theme.spacing.sm,
+    },
+    chartTitle: { color: theme.text, fontSize: theme.fontSizes.sm, fontWeight: theme.fontWeights.extraBold },
+    chartBarsRow: { flexDirection: "row", alignItems: "flex-end", height: 96, gap: 6 },
+    barColumn: {
+      flex: 1,
+      height: "100%",
+      justifyContent: "flex-end",
+      backgroundColor: theme.neutralSoft,
+      borderRadius: 6,
+      overflow: "hidden",
+    },
+    bar: { width: "100%", borderRadius: 6 },
+    chartLabelsRow: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
+    chartLabel: { flex: 1, color: theme.textMuted, fontSize: theme.fontSizes.xxs, textAlign: "center" },
+  });
+}

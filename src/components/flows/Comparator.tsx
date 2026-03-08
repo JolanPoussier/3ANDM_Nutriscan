@@ -1,27 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { useAppTheme } from "../../context/ThemeContext";
 import type { HistoryStackParamList } from "../../navigation/types";
-import type { OFFProductResponse, OFFProduct } from "../../types/off";
+import type { OFFProduct, OFFProductResponse } from "../../types/off";
 import { OFFFetch } from "../../utils/api";
+import ProductThumbnail from "../ui/ProductThumbnail";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "Comparator">;
 
-type MetricKey =
-  | "nutriscore"
-  | "nova"
-  | "calories"
-  | "fat"
-  | "sugars"
-  | "salt"
-  | "fiber"
-  | "proteins";
+type MetricKey = "nutriscore" | "nova" | "calories" | "fat" | "sugars" | "salt" | "fiber" | "proteins";
 
 type Metric = {
   key: MetricKey;
   label: string;
-  unit?: string; 
+  unit?: string;
 };
 
 const METRICS: Metric[] = [
@@ -51,7 +45,6 @@ function betterIsHigher(key: MetricKey) {
 
 function fmtNumber(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
-  // évite 4.0000
   if (Number.isInteger(n)) return String(n);
   return String(Math.round(n * 10) / 10);
 }
@@ -71,7 +64,7 @@ function getMetricValue(p: OFFProduct, key: MetricKey): number | null {
   switch (key) {
     case "nutriscore": {
       const score = nutriToScore(p.nutriscore_grade);
-      return score ? score : null;
+      return score || null;
     }
     case "nova":
       return typeof p.nova_group === "number" ? p.nova_group : null;
@@ -130,6 +123,8 @@ function computeWinner(left: OFFProduct, right: OFFProduct) {
 }
 
 export default function Comparator({ route }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { leftBarcode, rightBarcode } = route.params;
 
   const [loading, setLoading] = useState(true);
@@ -182,8 +177,8 @@ export default function Comparator({ route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
-        <Text style={[styles.muted, { marginTop: 10 }]}>Chargement…</Text>
+        <ActivityIndicator color={theme.primary} />
+        <Text style={styles.centerMuted}>Chargement…</Text>
       </View>
     );
   }
@@ -192,10 +187,8 @@ export default function Comparator({ route }: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.title}>Comparateur</Text>
-        <Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>
-          Impossible d’afficher la comparaison.
-        </Text>
-        <Text style={[styles.muted, { marginTop: 8 }]}>{error ?? ""}</Text>
+        <Text style={styles.centerMuted}>Impossible d’afficher la comparaison.</Text>
+        <Text style={styles.centerMuted}>{error ?? ""}</Text>
       </View>
     );
   }
@@ -239,7 +232,7 @@ export default function Comparator({ route }: Props) {
 
           const leftText =
             m.key === "nutriscore"
-              ? (left.nutriscore_grade ? left.nutriscore_grade.toUpperCase() : "—")
+              ? left.nutriscore_grade?.toUpperCase() ?? "—"
               : m.key === "nova"
                 ? fmtNumber(lv ?? undefined)
                 : m.unit === "kcal"
@@ -248,7 +241,7 @@ export default function Comparator({ route }: Props) {
 
           const rightText =
             m.key === "nutriscore"
-              ? (right.nutriscore_grade ? right.nutriscore_grade.toUpperCase() : "—")
+              ? right.nutriscore_grade?.toUpperCase() ?? "—"
               : m.key === "nova"
                 ? fmtNumber(rv ?? undefined)
                 : m.unit === "kcal"
@@ -272,7 +265,7 @@ export default function Comparator({ route }: Props) {
         })}
       </View>
 
-      {summary && (
+      {summary ? (
         <View style={styles.summary}>
           <Text style={styles.summaryTitle}>Résumé</Text>
           <Text style={styles.summaryText}>
@@ -283,27 +276,22 @@ export default function Comparator({ route }: Props) {
                 : `Produit 2 gagne (${summary.leftPoints}-${summary.rightPoints})`}
           </Text>
         </View>
-      )}
+      ) : null}
     </ScrollView>
   );
 }
 
 function ProductHeader({ product, sideLabel }: { product: OFFProduct; sideLabel: string }) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const grade = product.nutriscore_grade?.toUpperCase() ?? "—";
+
   return (
     <View style={styles.headerCard}>
       <Text style={styles.sideLabel}>{sideLabel}</Text>
       <View style={styles.headerRow}>
-        <View style={styles.imgWrap}>
-          {product.image_url ? (
-            <Image source={{ uri: product.image_url }} style={styles.img} resizeMode="contain" />
-          ) : (
-            <View style={[styles.imgWrap, styles.imgPlaceholder]}>
-              <Text style={styles.muted}>—</Text>
-            </View>
-          )}
-        </View>
-        <View style={{ flex: 1 }}>
+        <ProductThumbnail imageUrl={product.image_url} size={56} radius={theme.borderRadius.md} />
+        <View style={styles.flexOne}>
           <Text style={styles.pName} numberOfLines={2}>
             {tiny(product.product_name)}
           </Text>
@@ -324,79 +312,85 @@ function ProductHeader({ product, sideLabel }: { product: OFFProduct; sideLabel:
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c" },
-  content: { padding: 16, paddingBottom: 28, gap: 14 },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: { flex: 1, backgroundColor: theme.background },
+    content: { padding: theme.layout.screenPadding, paddingBottom: theme.spacing.xxl - 4, gap: theme.spacing.md },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18, backgroundColor: "#0b0b0c" },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: theme.spacing.lg + 2,
+      backgroundColor: theme.background,
+      gap: theme.spacing.sm,
+    },
+    centerMuted: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
 
-  title: { color: "#fff", fontSize: 22, fontWeight: "900" },
-  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
+    title: { color: theme.text, fontSize: theme.fontSizes.xl, fontWeight: theme.fontWeights.heavy },
+    muted: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
 
-  twoCols: { flexDirection: "row", gap: 12 },
-  headerCard: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  sideLabel: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginBottom: 8 },
+    twoCols: { flexDirection: "row", gap: theme.spacing.sm + 4 },
+    headerCard: {
+      flex: 1,
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md - 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      gap: theme.spacing.sm,
+    },
+    sideLabel: { color: theme.textMuted, fontSize: theme.fontSizes.xs, marginBottom: theme.spacing.xs },
 
-  headerRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-  imgWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  img: { width: "92%", height: "92%" },
-  imgPlaceholder: {},
+    headerRow: { flexDirection: "row", gap: theme.spacing.sm + 2, alignItems: "center" },
+    flexOne: { flex: 1 },
 
-  pName: { color: "#fff", fontWeight: "900", fontSize: 13 },
-  pBadges: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
+    pName: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.sm },
+    pBadges: { flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.sm, flexWrap: "wrap" },
 
-  badgeSoft: { backgroundColor: "rgba(255,255,255,0.10)", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
-  badgeText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+    badgeSoft: {
+      backgroundColor: theme.badgeSoft,
+      paddingVertical: theme.spacing.sm - 2,
+      paddingHorizontal: theme.spacing.sm + 2,
+      borderRadius: theme.borderRadius.pill,
+    },
+    badgeText: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.xs },
 
-  table: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 10,
-  },
-  row: { gap: 8 },
-  metric: { color: "rgba(255,255,255,0.8)", fontWeight: "800" },
+    table: {
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md - 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      gap: theme.spacing.sm + 2,
+    },
+    row: { gap: theme.spacing.sm },
+    metric: { color: theme.text, fontWeight: theme.fontWeights.extraBold },
 
-  values: { flexDirection: "row", gap: 10 },
-  cell: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cellText: { color: "#fff", fontWeight: "900" },
+    values: { flexDirection: "row", gap: theme.spacing.sm + 2 },
+    cell: {
+      flex: 1,
+      paddingVertical: theme.spacing.sm + 2,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.cardSoft,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cellText: { color: theme.text, fontWeight: theme.fontWeights.heavy },
 
-  good: { backgroundColor: "rgba(27,158,62,0.25)", borderColor: "rgba(27,158,62,0.35)" },
-  bad: { backgroundColor: "rgba(214,69,65,0.25)", borderColor: "rgba(214,69,65,0.35)" },
+    good: { backgroundColor: theme.primarySoft, borderColor: theme.primarySoftStrong },
+    bad: { backgroundColor: theme.errorSoft, borderColor: theme.errorBorder },
 
-  summary: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  summaryTitle: { color: "#fff", fontWeight: "900", marginBottom: 6 },
-  summaryText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
-});
+    summary: {
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+    },
+    summaryTitle: { color: theme.text, fontWeight: theme.fontWeights.heavy, marginBottom: theme.spacing.xs + 2 },
+    summaryText: { color: theme.text, fontWeight: theme.fontWeights.extraBold },
+  });
+}

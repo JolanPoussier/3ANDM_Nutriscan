@@ -14,6 +14,7 @@ import {
 import LoadingDots from "../components/ui/LoadingDots";
 import NutriScoreBadge from "../components/ui/NutriScoreBadge";
 import ProductThumbnail from "../components/ui/ProductThumbnail";
+import { useAppTheme } from "../context/ThemeContext";
 import { useDebounce } from "../hooks/useDebounce";
 import type { SearchStackParamList } from "../navigation/types";
 import { OFFSearch } from "../utils/api";
@@ -59,6 +60,7 @@ type SearchItem = {
   imageUrl?: string;
   nutriScore?: string;
 };
+
 const PAGE_SIZE = 20;
 
 function asText(value: unknown): string {
@@ -70,15 +72,7 @@ function asText(value: unknown): string {
 
 function normalizeHit(hit: SearchHit): SearchItem | null {
   const source = hit._source ?? hit;
-  const barcode = String(
-    source.code ??
-      source.id ??
-      source._id ??
-      hit.code ??
-      hit.id ??
-      hit._id ??
-      "",
-  ).trim();
+  const barcode = String(source.code ?? source.id ?? source._id ?? hit.code ?? hit.id ?? hit._id ?? "").trim();
   if (!barcode) return null;
 
   const rawBrand = asText(source.brands ?? hit.brands);
@@ -89,23 +83,17 @@ function normalizeHit(hit: SearchHit): SearchItem | null {
 
   return {
     barcode,
-    name:
-      asText(
-        source.product_name ?? source.product_name_fr ?? source.product_name_en,
-      ) || "Produit sans nom",
+    name: asText(source.product_name ?? source.product_name_fr ?? source.product_name_en) || "Produit sans nom",
     brand,
-    imageUrl:
-      source.image_url ??
-      source.image_front_url ??
-      hit.image_url ??
-      hit.image_front_url,
-    nutriScore: (
-      source.nutriscore_grade ?? hit.nutriscore_grade
-    )?.toUpperCase(),
+    imageUrl: source.image_url ?? source.image_front_url ?? hit.image_url ?? hit.image_front_url,
+    nutriScore: (source.nutriscore_grade ?? hit.nutriscore_grade)?.toUpperCase(),
   };
 }
 
 export default function SearchScreen({ navigation }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query.trim(), 450);
 
@@ -122,14 +110,11 @@ export default function SearchScreen({ navigation }: Props) {
       page: nextPage,
       size: PAGE_SIZE,
       sort_by: "unique_scans_n",
-      fields:
-        "code,product_name,product_name_en,brands,image_url,image_front_url,nutriscore_grade",
+      fields: "code,product_name,product_name_en,brands,image_url,image_front_url,nutriscore_grade",
     });
 
     const source = data.hits ?? data.products ?? [];
-    const mapped = source
-      .map(normalizeHit)
-      .filter((item): item is SearchItem => item !== null);
+    const mapped = source.map(normalizeHit).filter((item): item is SearchItem => item !== null);
 
     return { mapped, sourceLength: source.length };
   }
@@ -152,10 +137,7 @@ export default function SearchScreen({ navigation }: Props) {
       setError(null);
 
       try {
-        const { mapped, sourceLength } = await fetchSearchPage(
-          debouncedQuery,
-          1,
-        );
+        const { mapped } = await fetchSearchPage(debouncedQuery, 1);
         if (cancelled) return;
 
         setResults(mapped);
@@ -163,11 +145,7 @@ export default function SearchScreen({ navigation }: Props) {
         setHasMore(mapped.length > 0);
       } catch (e) {
         if (!cancelled) {
-          setError(
-            e instanceof Error
-              ? e.message
-              : "Erreur réseau pendant la recherche.",
-          );
+          setError(e instanceof Error ? e.message : "Erreur réseau pendant la recherche.");
           setResults([]);
           setPage(1);
           setHasMore(false);
@@ -184,8 +162,7 @@ export default function SearchScreen({ navigation }: Props) {
   }, [debouncedQuery]);
 
   const emptyMessage = useMemo(() => {
-    if (!debouncedQuery)
-      return "Tape un nom ou une marque pour lancer une recherche.";
+    if (!debouncedQuery) return "Tape un nom ou une marque pour lancer une recherche.";
     if (loading || loadingMore) return "";
     if (error) return error;
     return "Aucun résultat trouvé.";
@@ -199,10 +176,7 @@ export default function SearchScreen({ navigation }: Props) {
 
     try {
       const nextPage = page + 1;
-      const { mapped, sourceLength } = await fetchSearchPage(
-        debouncedQuery,
-        nextPage,
-      );
+      const { mapped, sourceLength } = await fetchSearchPage(debouncedQuery, nextPage);
 
       setResults((prev) => {
         const seen = new Set(prev.map((item) => item.barcode));
@@ -212,9 +186,7 @@ export default function SearchScreen({ navigation }: Props) {
       setPage(nextPage);
       setHasMore(sourceLength > 0);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Erreur réseau pendant la recherche.",
-      );
+      setError(e instanceof Error ? e.message : "Erreur réseau pendant la recherche.");
     } finally {
       setLoadingMore(false);
     }
@@ -222,11 +194,8 @@ export default function SearchScreen({ navigation }: Props) {
 
   function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const distanceFromBottom =
-      contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    if (distanceFromBottom < 120) {
-      loadMore();
-    }
+    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    if (distanceFromBottom < 120) loadMore();
   }
 
   return (
@@ -237,10 +206,10 @@ export default function SearchScreen({ navigation }: Props) {
           value={query}
           onChangeText={setQuery}
           placeholder="Nom ou marque (ex: nutella)"
-          placeholderTextColor="rgba(255,255,255,0.45)"
+          placeholderTextColor={theme.textMuted}
           autoCorrect={false}
           autoCapitalize="none"
-          style={styles.input}
+          style={[styles.input, theme.shadows.sm]}
         />
       </View>
 
@@ -252,9 +221,7 @@ export default function SearchScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={results}
-          contentContainerStyle={
-            results.length === 0 ? styles.emptyList : styles.list
-          }
+          contentContainerStyle={results.length === 0 ? styles.emptyList : styles.list}
           keyExtractor={(item) => item.barcode}
           onEndReached={() => {
             const now = Date.now();
@@ -266,18 +233,8 @@ export default function SearchScreen({ navigation }: Props) {
           onScroll={handleScroll}
           scrollEventThrottle={16}
           renderItem={({ item }) => (
-            <Pressable
-              onPress={() =>
-                navigation.navigate("ProductDetails", { barcode: item.barcode })
-              }
-              style={styles.item}
-            >
-              <ProductThumbnail
-                imageUrl={item.imageUrl}
-                size={64}
-                radius={12}
-                placeholderText="No image"
-              />
+            <Pressable onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })} style={styles.item}>
+              <ProductThumbnail imageUrl={item.imageUrl} size={64} radius={theme.borderRadius.sm + 4} placeholderText="No image" />
 
               <View style={styles.itemContent}>
                 <Text numberOfLines={2} style={styles.itemTitle}>
@@ -288,12 +245,7 @@ export default function SearchScreen({ navigation }: Props) {
                 </Text>
               </View>
 
-              <NutriScoreBadge
-                grade={item.nutriScore}
-                shape="circle"
-                size={34}
-                textSize={14}
-              />
+              <NutriScoreBadge grade={item.nutriScore} shape="circle" size={34} textSize={14} />
             </Pressable>
           )}
           ListEmptyComponent={
@@ -307,13 +259,11 @@ export default function SearchScreen({ navigation }: Props) {
             loadingMore ? (
               <View style={styles.footer}>
                 <LoadingDots size={7} />
-                <Text style={styles.muted}>
-                  Chargement de plus de résultats…
-                </Text>
+                <Text style={styles.muted}>Chargement de plus de résultats…</Text>
               </View>
             ) : hasMore && results.length > 0 ? (
               <View style={styles.footerIdle}>
-                <LoadingDots size={6} color="rgba(255,255,255,0.45)" />
+                <LoadingDots size={6} color={theme.badgeMuted} />
               </View>
             ) : null
           }
@@ -323,49 +273,47 @@ export default function SearchScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0c" },
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    page: { flex: 1, backgroundColor: theme.background },
 
-  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10, gap: 10 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    color: "#fff",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
+    header: {
+      paddingHorizontal: theme.layout.screenPadding,
+      paddingTop: theme.layout.screenPadding,
+      paddingBottom: theme.spacing.sm + 2,
+      gap: theme.spacing.sm + 2,
+    },
+    title: { color: theme.text, fontSize: theme.fontSizes.xl, fontWeight: theme.fontWeights.extraBold },
+    input: {
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+      color: theme.text,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + 4,
+      fontSize: theme.fontSizes.md,
+    },
 
-  list: { paddingHorizontal: 12, paddingBottom: 20, gap: 10 },
-  emptyList: { flexGrow: 1, paddingHorizontal: 18, paddingBottom: 20 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
-  footer: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-  },
-  footerIdle: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-  },
-  muted: { color: "rgba(255,255,255,0.7)", textAlign: "center" },
+    list: { paddingHorizontal: theme.spacing.sm + 4, paddingBottom: theme.spacing.xl - 4, gap: theme.spacing.sm + 2 },
+    emptyList: { flexGrow: 1, paddingHorizontal: theme.spacing.lg + 2, paddingBottom: theme.spacing.xl - 4 },
+    center: { flex: 1, alignItems: "center", justifyContent: "center", gap: theme.spacing.sm + 2 },
+    footer: { alignItems: "center", justifyContent: "center", gap: theme.spacing.sm, paddingVertical: theme.spacing.md },
+    footerIdle: { alignItems: "center", justifyContent: "center", paddingVertical: theme.spacing.sm + 2 },
+    muted: { color: theme.textMuted, textAlign: "center" },
 
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  itemContent: { flex: 1, gap: 4 },
-  itemTitle: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  itemBrand: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
-});
+    item: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm + 4,
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.sm + 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+    },
+    itemContent: { flex: 1, gap: theme.spacing.xs },
+    itemTitle: { color: theme.text, fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes.base },
+    itemBrand: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
+  });
+}

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAppTheme } from "../../context/ThemeContext";
 import type { HistoryItem } from "../../types/history";
 import { formatHistoryDate } from "../../utils/historyMetrics";
 import NutriScoreBadge from "../ui/NutriScoreBadge";
@@ -15,12 +16,15 @@ type Props = {
 };
 
 export default function HistoryListItem({ item, onPress, onCompare, onDelete }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <Pressable style={styles.itemCard} onPress={onPress}>
       <View style={styles.itemRow}>
-        <ProductThumbnail imageUrl={item.imageUrl} size={64} radius={14} />
+        <ProductThumbnail imageUrl={item.imageUrl} size={64} radius={theme.borderRadius.md} />
 
-        <View style={{ flex: 1 }}>
+        <View style={styles.flexOne}>
           <Text style={styles.itemName} numberOfLines={1}>
             {item.name ?? "Produit inconnu"}
           </Text>
@@ -33,7 +37,7 @@ export default function HistoryListItem({ item, onPress, onCompare, onDelete }: 
             <Text style={styles.muted}>barcode: {item.barcode}</Text>
           </View>
 
-          <PillButton label="Comparer" onPress={onCompare} />
+          <PillButton label="Comparer" onPress={onCompare} textColor={theme.text} />
         </View>
 
         <Pressable hitSlop={10} style={styles.deleteBtn} onPress={onDelete}>
@@ -44,25 +48,28 @@ export default function HistoryListItem({ item, onPress, onCompare, onDelete }: 
   );
 }
 
-const styles = StyleSheet.create({
-  itemCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  itemRow: { flexDirection: "row", gap: 12, alignItems: "center" },
-  itemName: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  muted: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
-  badgesRow: { marginTop: 8, flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" },
-  deleteBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteText: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 14 },
-});
+function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
+  return StyleSheet.create({
+    itemCard: {
+      backgroundColor: theme.card,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md - 2,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+    },
+    itemRow: { flexDirection: "row", gap: theme.spacing.sm + 4, alignItems: "center" },
+    flexOne: { flex: 1 },
+    itemName: { color: theme.text, fontSize: theme.fontSizes.md, fontWeight: theme.fontWeights.extraBold },
+    muted: { color: theme.textMuted, fontSize: theme.fontSizes.sm },
+    badgesRow: { marginTop: theme.spacing.sm, flexDirection: "row", gap: theme.spacing.sm, alignItems: "center", flexWrap: "wrap" },
+    deleteBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: theme.badgeSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    deleteText: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.base },
+  });
+}
