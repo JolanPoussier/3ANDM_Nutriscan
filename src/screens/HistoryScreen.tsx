@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -13,6 +12,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import AppButton from "../components/ui/AppButton";
+import ProductThumbnail from "../components/ui/ProductThumbnail";
 import type { HistoryStackParamList } from "../navigation/types";
 import type { HistoryItem } from "../types/history";
 import { getHistory, removeFromHistory } from "../utils/historyStorage";
@@ -370,23 +371,12 @@ export default function HistoryScreen({ navigation }: Props) {
               }
             >
               <View style={styles.row}>
-                <View style={styles.thumbWrap}>
-                  {imageUrl ? (
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={styles.thumb}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
-                      <Ionicons
-                        name="fast-food-outline"
-                        size={24}
-                        color={theme.textMuted}
-                      />
-                    </View>
-                  )}
-                </View>
+                <ProductThumbnail
+                  imageUrl={imageUrl}
+                  size={68}
+                  borderRadius={theme.borderRadius.md}
+                  iconSize={24}
+                />
 
               <View style={styles.flexOne}>
                 <Text style={styles.name} numberOfLines={1}>
@@ -405,16 +395,16 @@ export default function HistoryScreen({ navigation }: Props) {
                   <Text style={styles.muted}>barcode: {item.barcode}</Text>
                 </View>
 
-                <Pressable
-                  style={styles.compareBtn}
+                <AppButton
+                  label="Comparer"
                   onPress={() =>
                     navigation.navigate("CompareHub", {
                       leftBarcode: item.barcode,
                     })
                   }
-                >
-                  <Text style={styles.compareText}>Comparer</Text>
-                </Pressable>
+                  style={styles.compareBtn}
+                  textStyle={styles.compareText}
+                />
               </View>
 
               <Pressable
@@ -698,25 +688,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       flexDirection: "row",
       gap: theme.spacing.md,
       alignItems: "center",
-    },
-
-    thumbWrap: {
-      width: 68,
-      height: 68,
-      borderRadius: theme.borderRadius.md,
-      overflow: "hidden",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.imagePlaceholder,
-    },
-    thumb: {
-      width: "94%",
-      height: "94%",
-      borderRadius: Math.max(0, theme.borderRadius.md - 2),
-    },
-    thumbPlaceholder: {
-      alignItems: "center",
-      justifyContent: "center",
     },
 
     name: {

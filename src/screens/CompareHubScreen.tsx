@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import AppButton from "../components/ui/AppButton";
+import ProductThumbnail from "../components/ui/ProductThumbnail";
 import type { HistoryStackParamList } from "../navigation/types";
 import type { HistoryItem } from "../types/history";
 import { getHistory } from "../utils/historyStorage";
@@ -115,13 +117,13 @@ export default function CompareHubScreen({ navigation, route }: Props) {
         onRemove={() => navigation.setParams({ leftBarcode, rightBarcode: undefined })}
       />
 
-      <Pressable
+      <AppButton
+        label="Comparer"
         disabled={!canCompare}
-        style={[styles.primaryBtn, !canCompare && styles.primaryBtnDisabled]}
         onPress={() => navigation.navigate("Comparator", { leftBarcode: leftBarcode!, rightBarcode: rightBarcode! })}
-      >
-        <Text style={styles.primaryBtnText}>Comparer</Text>
-      </Pressable>
+        style={[styles.primaryBtn, !canCompare && styles.primaryBtnDisabled]}
+        textStyle={styles.primaryBtnText}
+      />
     </View>
   );
 }
@@ -149,9 +151,7 @@ function SlotCard({
         <Text style={styles.cardLabel}>{label}</Text>
 
         {has ? (
-          <Pressable onPress={onRemove} style={styles.smallBtn}>
-            <Text style={styles.smallBtnText}>Retirer</Text>
-          </Pressable>
+          <AppButton label="Retirer" onPress={onRemove} style={styles.smallBtn} textStyle={styles.smallBtnText} />
         ) : null}
       </View>
 
@@ -162,15 +162,12 @@ function SlotCard({
         </Pressable>
       ) : (
         <View style={styles.productRow}>
-          <View style={styles.thumbWrap}>
-            {item?.imageUrl ? (
-              <Image source={{ uri: item.imageUrl }} style={styles.thumb} resizeMode="contain" />
-            ) : (
-              <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
-                <Text style={styles.muted}>—</Text>
-              </View>
-            )}
-          </View>
+          <ProductThumbnail
+            imageUrl={item?.imageUrl}
+            size={68}
+            borderRadius={16}
+            placeholderMode="dash"
+          />
 
           <View style={styles.flexOne}>
             <Text style={styles.pName} numberOfLines={2}>
@@ -181,9 +178,7 @@ function SlotCard({
             </Text>
           </View>
 
-          <Pressable onPress={onAdd} style={styles.smallBtn}>
-            <Text style={styles.smallBtnText}>Changer</Text>
-          </Pressable>
+          <AppButton label="Changer" onPress={onAdd} style={styles.smallBtn} textStyle={styles.smallBtnText} />
         </View>
       )}
     </View>
@@ -230,18 +225,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
     addText: { color: theme.textMuted, fontWeight: theme.fontWeights.extraBold, marginTop: 4 },
 
     productRow: { flexDirection: "row", gap: 14, alignItems: "center" },
-    thumbWrap: {
-      width: 68,
-      height: 68,
-      borderRadius: 16,
-      overflow: "hidden",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.imagePlaceholder,
-    },
-    thumb: { width: "95%", height: "95%" },
-    thumbPlaceholder: {},
-
     pName: { color: theme.text, fontWeight: theme.fontWeights.heavy, fontSize: theme.fontSizes.md },
 
     smallBtn: {

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,17 +9,18 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
 
+import AppButton from "../components/ui/AppButton";
+import IconButton from "../components/ui/IconButton";
+import NutriBadge from "../components/ui/NutriBadge";
+import ProductThumbnail from "../components/ui/ProductThumbnail";
 import type { FavoritesStackParamList } from "../navigation/types";
 import { useFavorites } from "../context/FavoritesContext";
 import { useAppTheme } from "../context/ThemeContext";
 import CategoryPickerModal from "../components/CategoryPickerModal";
-import { getNutriColor } from "../utils/nutriColor";
 import { OFFFetch } from "../utils/api";
 import type { OFFProductResponse } from "../types/off";
 import { resolveProductImageUrl } from "../utils/productImage";
-import { normalizeNutriGrade } from "../utils/nutriScore";
 
 type Props = NativeStackScreenProps<FavoritesStackParamList, "Favoris">;
 
@@ -49,11 +49,6 @@ export default function FavoritesScreen({ navigation }: Props) {
     });
     return categories.map((cat) => ({ category: cat, items: map.get(cat.id) ?? [] }));
   }, [categories, favorites]);
-
-  const nutriStyle = useMemo(
-    () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
-    [theme],
-  );
 
   useEffect(() => {
     const missing = favorites
@@ -139,9 +134,7 @@ export default function FavoritesScreen({ navigation }: Props) {
             placeholderTextColor={theme.textMuted}
             style={styles.input}
           />
-          <Pressable style={styles.addButton} onPress={onAddCategory}>
-            <Text style={styles.addButtonText}>Ajouter</Text>
-          </Pressable>
+          <AppButton label="Ajouter" onPress={onAddCategory} style={styles.addButton} textStyle={styles.addButtonText} />
         </View>
 
         {favorites.length === 0 ? <Text style={styles.empty}>Aucun favori pour le moment.</Text> : null}
@@ -152,18 +145,24 @@ export default function FavoritesScreen({ navigation }: Props) {
               <Text style={styles.sectionTitle}>{category.name}</Text>
               <View style={styles.sectionRight}>
                 {category.id !== "default_uncategorized" ? (
-                  <Pressable onPress={() => onDeleteCategory(category.id, category.name)} style={styles.iconAction}>
-                    <Ionicons name="trash-outline" size={18} color={theme.error} />
-                  </Pressable>
+                  <IconButton
+                    iconName="trash-outline"
+                    size={18}
+                    color={theme.error}
+                    onPress={() => onDeleteCategory(category.id, category.name)}
+                    style={styles.iconAction}
+                    accessibilityLabel="Supprimer la catégorie"
+                  />
                 ) : null}
                 <Text style={styles.countText}>{items.length}</Text>
-                <Pressable onPress={() => toggleCategory(category.id)} style={styles.iconAction}>
-                  <Ionicons
-                    name={collapsedCategoryIds.includes(category.id) ? "chevron-down" : "chevron-up"}
-                    size={20}
-                    color={theme.textMuted}
-                  />
-                </Pressable>
+                <IconButton
+                  iconName={collapsedCategoryIds.includes(category.id) ? "chevron-down" : "chevron-up"}
+                  size={20}
+                  color={theme.textMuted}
+                  onPress={() => toggleCategory(category.id)}
+                  style={styles.iconAction}
+                  accessibilityLabel="Afficher ou masquer la catégorie"
+                />
               </View>
             </View>
 
@@ -178,15 +177,7 @@ export default function FavoritesScreen({ navigation }: Props) {
                     onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
                     style={styles.item}
                   >
-                    <View style={styles.image}>
-                      {imageUrl ? (
-                        <Image source={{ uri: imageUrl }} style={styles.image} />
-                      ) : (
-                        <View style={styles.imagePlaceholder}>
-                          <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
-                        </View>
-                      )}
-                    </View>
+                    <ProductThumbnail imageUrl={imageUrl} size={64} borderRadius={theme.borderRadius.md} />
 
                     <View style={styles.itemBody}>
                       <Text style={styles.itemName} numberOfLines={2}>
@@ -196,22 +187,26 @@ export default function FavoritesScreen({ navigation }: Props) {
                         {item.brand}
                       </Text>
                       <View style={styles.itemActions}>
-                        <Pressable style={styles.smallButton} onPress={() => onMove(item.barcode)}>
-                          <Ionicons name="folder-open-outline" size={14} color={theme.primary} />
-                        </Pressable>
-                        <Pressable style={styles.trashButton} onPress={() => removeFavorite(item.barcode)}>
-                          <Ionicons name="trash-outline" size={16} color={theme.error} />
-                        </Pressable>
+                        <IconButton
+                          iconName="folder-open-outline"
+                          size={14}
+                          color={theme.primary}
+                          onPress={() => onMove(item.barcode)}
+                          style={styles.smallButton}
+                          accessibilityLabel="Déplacer le favori"
+                        />
+                        <IconButton
+                          iconName="trash-outline"
+                          size={16}
+                          color={theme.error}
+                          onPress={() => removeFavorite(item.barcode)}
+                          style={styles.trashButton}
+                          accessibilityLabel="Supprimer le favori"
+                        />
                       </View>
                     </View>
 
-                  <View style={[styles.nutri, nutriStyle(item.nutriScore)]}>
-                    {normalizeNutriGrade(item.nutriScore) ? (
-                      <Text style={styles.nutriText}>{normalizeNutriGrade(item.nutriScore)}</Text>
-                    ) : (
-                      <Text style={styles.nutriText}>—</Text>
-                    )}
-                  </View>
+                  <NutriBadge grade={item.nutriScore} size={36} textSize={13} />
                   </Pressable>
                 );
               })
@@ -318,18 +313,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       alignItems: "center",
       gap: theme.spacing.md,
     },
-    image: {
-      width: 64,
-      height: 64,
-      borderRadius: theme.borderRadius.md,
-      backgroundColor: theme.imagePlaceholder,
-    },
-    imagePlaceholder: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-    },
     itemBody: { flex: 1, gap: theme.spacing.xs },
     itemName: {
       color: theme.text,
@@ -362,19 +345,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       paddingHorizontal: 10,
       alignItems: "center",
       justifyContent: "center",
-    },
-    nutri: {
-      width: 36,
-      height: 36,
-      borderRadius: theme.borderRadius.pill,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    nutriText: {
-      color: theme.textInverse,
-      fontWeight: theme.fontWeights.heavy,
-      fontSize: theme.fontSizes.sm,
-      textTransform: "uppercase",
     },
   });
 }

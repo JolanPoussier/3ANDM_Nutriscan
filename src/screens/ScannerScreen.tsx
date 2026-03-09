@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import AppButton from "../components/ui/AppButton";
 import { useI18n } from "../context/I18nContext";
 import { useAppTheme } from "../context/ThemeContext";
 import type { ScannerStackParamList } from "../navigation/types";
@@ -111,9 +112,12 @@ export default function ScannerScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.permissionText}>{t("scanner.cameraNeed")}</Text>
-        <Pressable style={styles.btnPrimary} onPress={requestPermission}>
-          <Text style={styles.btnPrimaryText}>{t("scanner.allowCamera")}</Text>
-        </Pressable>
+        <AppButton
+          label={t("scanner.allowCamera")}
+          onPress={requestPermission}
+          style={styles.btnPrimary}
+          textStyle={styles.btnPrimaryText}
+        />
       </View>
     );
   }
@@ -157,9 +161,12 @@ export default function ScannerScreen({ navigation }: Props) {
             ) : error ? (
               <>
                 <Text style={styles.error}>{error}</Text>
-                <Pressable style={styles.btnSecondary} onPress={reset}>
-                  <Text style={styles.btnSecondaryText}>{t("common.retry")}</Text>
-                </Pressable>
+                <AppButton
+                  label={t("common.retry")}
+                  onPress={reset}
+                  style={styles.btnSecondary}
+                  textStyle={styles.btnSecondaryText}
+                />
               </>
             ) : (
               <Text style={styles.hint}>{t("scanner.hint")}</Text>

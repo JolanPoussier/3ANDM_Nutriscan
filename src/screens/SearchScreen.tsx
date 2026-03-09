@@ -1,23 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import LoadingDots from "../components/LoadingDots";
+import NutriBadge from "../components/ui/NutriBadge";
+import ProductThumbnail from "../components/ui/ProductThumbnail";
 import { useI18n } from "../context/I18nContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { useDebounce } from "../hooks/useDebounce";
 import type { SearchStackParamList } from "../navigation/types";
 import { OFFSearch } from "../utils/api";
-import { getNutriColor } from "../utils/nutriColor";
 import { normalizeNutriGrade } from "../utils/nutriScore";
 import { normalizeImageUrl } from "../utils/productImage";
 
@@ -133,11 +132,6 @@ export default function SearchScreen({ navigation }: Props) {
   const [hasMore, setHasMore] = useState(false);
   const lastEndReachedAt = useRef(0);
   const canSearch = debouncedQuery.length >= MIN_QUERY_LENGTH;
-
-  const nutriBadgeStyle = useMemo(
-    () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
-    [theme],
-  );
 
   async function fetchSearchPage(searchTerm: string, nextPage: number) {
     const data = await OFFSearch<SearchResponse>(searchTerm, {
@@ -271,15 +265,7 @@ export default function SearchScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
               style={[styles.item, theme.shadows.sm]}
             >
-              <View style={styles.image}>
-                {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.image} />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
-                  </View>
-                )}
-              </View>
+              <ProductThumbnail imageUrl={item.imageUrl} size={68} borderRadius={theme.borderRadius.md} />
 
               <View style={styles.itemContent}>
                 <Text numberOfLines={2} style={styles.itemTitle}>
@@ -290,13 +276,7 @@ export default function SearchScreen({ navigation }: Props) {
                 </Text>
               </View>
 
-              <View style={[styles.badge, nutriBadgeStyle(item.nutriScore)]}>
-                {item.nutriScore ? (
-                  <Text style={styles.badgeText}>{item.nutriScore}</Text>
-                ) : (
-                  <Text style={styles.badgeText}>—</Text>
-                )}
-              </View>
+              <NutriBadge grade={item.nutriScore} size={34} textSize={11} />
             </Pressable>
           )}
           ListEmptyComponent={
@@ -375,19 +355,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       shadowRadius: 6,
       elevation: 2,
     },
-    image: {
-      width: 68,
-      height: 68,
-      borderRadius: theme.borderRadius.md,
-      backgroundColor: theme.imagePlaceholder,
-    },
-    imagePlaceholder: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
     itemContent: { flex: 1, gap: theme.spacing.xs },
     itemTitle: {
       color: theme.text,
@@ -399,18 +366,5 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       fontSize: theme.fontSizes.sm,
     },
 
-    badge: {
-      width: 34,
-      height: 34,
-      borderRadius: theme.borderRadius.pill,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    badgeText: {
-      color: theme.textInverse,
-      fontSize: theme.fontSizes.xs,
-      fontWeight: theme.fontWeights.heavy,
-      textTransform: "uppercase",
-    },
   });
 }

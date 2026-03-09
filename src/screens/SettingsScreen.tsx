@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import ChoiceChip from "../components/ui/ChoiceChip";
 import { useI18n } from "../context/I18nContext";
 import { useAppTheme } from "../context/ThemeContext";
 import {
@@ -82,16 +83,13 @@ export default function SettingsScreen() {
           {(["fr", "en"] as const).map((lang) => {
             const active = locale === lang;
             return (
-              <Pressable
+              <ChoiceChip
                 key={lang}
+                label={t(`preferences.language.${lang}`)}
+                active={active}
                 onPress={() => changeLanguage(lang)}
-                style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
                 disabled={!prefsLoaded}
-              >
-                <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>
-                  {t(`preferences.language.${lang}`)}
-                </Text>
-              </Pressable>
+              />
             );
           })}
         </View>
@@ -123,16 +121,13 @@ export default function SettingsScreen() {
             {DIETS.map((d) => {
               const active = prefs.diet === d.key;
               return (
-                <Pressable
+                <ChoiceChip
                   key={d.key}
+                  label={t(`preferences.diets.${d.key}`)}
+                  active={active}
                   onPress={() => changeDiet(d.key)}
-                  style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
                   disabled={!prefsLoaded}
-                >
-                  <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>
-                    {t(`preferences.diets.${d.key}`)}
-                  </Text>
-                </Pressable>
+                />
               );
             })}
           </View>
@@ -247,26 +242,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       gap: 10,
       marginTop: 10,
     },
-    chip: {
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: theme.borderRadius.pill,
-      borderWidth: 1,
-    },
-    chipActive: {
-      backgroundColor: theme.primary,
-      borderColor: "transparent",
-    },
-    chipInactive: {
-      backgroundColor: theme.neutralSoft,
-      borderColor: theme.border,
-    },
-    chipText: {
-      fontWeight: theme.fontWeights.heavy,
-      fontSize: theme.fontSizes.xs,
-    },
-    chipTextActive: { color: theme.textInverse },
-    chipTextInactive: { color: theme.text },
 
     allergensList: { marginTop: 6 },
     checkRow: {
