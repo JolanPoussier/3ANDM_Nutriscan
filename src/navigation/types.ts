@@ -61,4 +61,7 @@ export type TabParamList = {
 export type FavoritesStackParamList = {
   Favoris: undefined;
   ProductDetails: ProductDetailsParams;
+  CompareHub: CompareHubParams;
+  ComparePick: ComparePickParams;
+  Comparator: ComparatorParams;
 };

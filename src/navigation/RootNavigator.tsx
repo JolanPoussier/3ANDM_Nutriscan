@@ -149,6 +149,21 @@ function FavoritesStackScreen() {
         component={ProductDetailsScreen}
         options={{ title: t("navigation.stack.productDetails") }}
       />
+      <FavoritesStack.Screen
+        name="CompareHub"
+        component={CompareHubScreen}
+        options={{ title: t("navigation.stack.compare") }}
+      />
+      <FavoritesStack.Screen
+        name="ComparePick"
+        component={ComparePickScreen}
+        options={{ title: t("navigation.stack.pickProduct") }}
+      />
+      <FavoritesStack.Screen
+        name="Comparator"
+        component={ComparatorScreen}
+        options={{ title: t("navigation.stack.comparator") }}
+      />
     </FavoritesStack.Navigator>
   );
 }

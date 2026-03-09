@@ -72,6 +72,7 @@ type SearchItem = {
 };
 
 const PAGE_SIZE = 20;
+const MIN_QUERY_LENGTH = 3;
 
 function asText(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -156,7 +157,6 @@ export default function SearchScreen({ navigation }: Props) {
         }),
       )
       .filter((item): item is SearchItem => item !== null);
-
     return { mapped, sourceLength: source.length };
   }
 
@@ -164,7 +164,7 @@ export default function SearchScreen({ navigation }: Props) {
     let cancelled = false;
 
     async function runSearch() {
-      if (!debouncedQuery) {
+      if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH) {
         setResults([]);
         setError(null);
         setLoading(false);
@@ -203,14 +203,14 @@ export default function SearchScreen({ navigation }: Props) {
   }, [debouncedQuery, t]);
 
   const emptyMessage = useMemo(() => {
-    if (!debouncedQuery) return t("search.startHint");
+    if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH) return t("search.startHint");
     if (loading || loadingMore) return "";
     if (error) return error;
     return t("search.noResults");
   }, [debouncedQuery, error, loading, loadingMore, t]);
 
   async function loadMore() {
-    if (!debouncedQuery || loading || loadingMore || !hasMore) return;
+    if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH || loading || loadingMore || !hasMore) return;
 
     setLoadingMore(true);
     setError(null);
