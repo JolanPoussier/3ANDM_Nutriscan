@@ -1,25 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import LoadingDots from "../components/LoadingDots";
+import NutriBadge from "../components/ui/NutriBadge";
+import ProductThumbnail from "../components/ui/ProductThumbnail";
 import { useI18n } from "../context/I18nContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { useDebounce } from "../hooks/useDebounce";
 import type { SearchStackParamList } from "../navigation/types";
 import { OFFSearch } from "../utils/api";
-import { getNutriColor } from "../utils/nutriColor";
 import { normalizeNutriGrade } from "../utils/nutriScore";
 import { normalizeImageUrl } from "../utils/productImage";
 
@@ -134,11 +131,7 @@ export default function SearchScreen({ navigation }: Props) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const lastEndReachedAt = useRef(0);
-
-  const nutriBadgeStyle = useMemo(
-    () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
-    [theme],
-  );
+  const canSearch = debouncedQuery.length >= MIN_QUERY_LENGTH;
 
   async function fetchSearchPage(searchTerm: string, nextPage: number) {
     const data = await OFFSearch<SearchResponse>(searchTerm, {
@@ -164,7 +157,7 @@ export default function SearchScreen({ navigation }: Props) {
     let cancelled = false;
 
     async function runSearch() {
-      if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH) {
+      if (!canSearch) {
         setResults([]);
         setError(null);
         setLoading(false);
@@ -178,12 +171,12 @@ export default function SearchScreen({ navigation }: Props) {
       setError(null);
 
       try {
-        const { mapped } = await fetchSearchPage(debouncedQuery, 1);
+        const { mapped, sourceLength } = await fetchSearchPage(debouncedQuery, 1);
         if (cancelled) return;
 
         setResults(mapped);
         setPage(1);
-        setHasMore(mapped.length > 0);
+        setHasMore(sourceLength === PAGE_SIZE);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : t("common.networkError"));
@@ -200,17 +193,17 @@ export default function SearchScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, t]);
+  }, [canSearch, debouncedQuery, t]);
 
   const emptyMessage = useMemo(() => {
-    if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH) return t("search.startHint");
+    if (!canSearch) return t("search.startHint");
     if (loading || loadingMore) return "";
     if (error) return error;
     return t("search.noResults");
-  }, [debouncedQuery, error, loading, loadingMore, t]);
+  }, [canSearch, error, loading, loadingMore, t]);
 
   async function loadMore() {
-    if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH || loading || loadingMore || !hasMore) return;
+    if (!canSearch || loading || loadingMore || !hasMore) return;
 
     setLoadingMore(true);
     setError(null);
@@ -225,18 +218,12 @@ export default function SearchScreen({ navigation }: Props) {
         return [...prev, ...deduped];
       });
       setPage(nextPage);
-      setHasMore(sourceLength > 0);
+      setHasMore(sourceLength === PAGE_SIZE);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.networkError"));
     } finally {
       setLoadingMore(false);
     }
-  }
-
-  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    if (distanceFromBottom < 120) loadMore();
   }
 
   const listContentStyle = results.length === 0 ? styles.emptyList : styles.list;
@@ -273,22 +260,12 @@ export default function SearchScreen({ navigation }: Props) {
             loadMore();
           }}
           onEndReachedThreshold={0.2}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}
               style={[styles.item, theme.shadows.sm]}
             >
-              <View style={styles.image}>
-                {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.image} />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Ionicons name="fast-food-outline" size={28} color={theme.textMuted} />
-                  </View>
-                )}
-              </View>
+              <ProductThumbnail imageUrl={item.imageUrl} size={68} borderRadius={theme.borderRadius.md} />
 
               <View style={styles.itemContent}>
                 <Text numberOfLines={2} style={styles.itemTitle}>
@@ -299,13 +276,7 @@ export default function SearchScreen({ navigation }: Props) {
                 </Text>
               </View>
 
-              <View style={[styles.badge, nutriBadgeStyle(item.nutriScore)]}>
-                {item.nutriScore ? (
-                  <Text style={styles.badgeText}>{item.nutriScore}</Text>
-                ) : (
-                  <Text style={styles.badgeText}>—</Text>
-                )}
-              </View>
+              <NutriBadge grade={item.nutriScore} size={34} textSize={11} />
             </Pressable>
           )}
           ListEmptyComponent={
@@ -384,19 +355,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       shadowRadius: 6,
       elevation: 2,
     },
-    image: {
-      width: 68,
-      height: 68,
-      borderRadius: theme.borderRadius.md,
-      backgroundColor: theme.imagePlaceholder,
-    },
-    imagePlaceholder: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
     itemContent: { flex: 1, gap: theme.spacing.xs },
     itemTitle: {
       color: theme.text,
@@ -408,18 +366,5 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       fontSize: theme.fontSizes.sm,
     },
 
-    badge: {
-      width: 34,
-      height: 34,
-      borderRadius: theme.borderRadius.pill,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    badgeText: {
-      color: theme.textInverse,
-      fontSize: theme.fontSizes.xs,
-      fontWeight: theme.fontWeights.heavy,
-      textTransform: "uppercase",
-    },
   });
 }

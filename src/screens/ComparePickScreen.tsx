@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -10,8 +9,8 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
 
+import ProductThumbnail from "../components/ui/ProductThumbnail";
 import type { HistoryStackParamList } from "../navigation/types";
 import type { HistoryItem } from "../types/history";
 import { getHistory } from "../utils/historyStorage";
@@ -104,9 +103,9 @@ export default function ComparePickScreen({ navigation, route }: Props) {
 
         const hits = Array.isArray(res?.hits) ? res.hits : [];
         setApiHits(hits);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (myId !== requestIdRef.current) return;
-        setApiError(e?.message ?? "Erreur lors de la recherche.");
+        setApiError(e instanceof Error ? e.message : "Erreur lors de la recherche.");
         setApiHits([]);
       } finally {
         if (myId === requestIdRef.current) setApiLoading(false);
@@ -190,19 +189,13 @@ export default function ComparePickScreen({ navigation, route }: Props) {
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => pick(item.barcode)}>
             <View style={styles.row}>
-              <View style={styles.thumbWrap}>
-                {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.thumb} resizeMode="contain" />
-                ) : (
-                  <View style={[styles.thumbWrap, styles.thumbPlaceholder]}>
-                    {item.kind === "api" ? (
-                      <Ionicons name="fast-food-outline" size={24} color={theme.imagePlaceholderText} />
-                    ) : (
-                      <Text style={styles.muted}>—</Text>
-                    )}
-                  </View>
-                )}
-              </View>
+              <ProductThumbnail
+                imageUrl={item.imageUrl}
+                size={62}
+                borderRadius={14}
+                iconSize={24}
+                placeholderMode={item.kind === "api" ? "icon" : "dash"}
+              />
 
               <View style={styles.flexOne}>
                 <Text style={styles.name} numberOfLines={1}>
@@ -300,18 +293,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
     },
     row: { flexDirection: "row", gap: 14, alignItems: "center" },
     flexOne: { flex: 1 },
-
-    thumbWrap: {
-      width: 62,
-      height: 62,
-      borderRadius: 14,
-      overflow: "hidden",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.imagePlaceholder,
-    },
-    thumb: { width: "95%", height: "95%" },
-    thumbPlaceholder: {},
 
     name: { color: theme.text, fontSize: theme.fontSizes.md, fontWeight: theme.fontWeights.heavy },
     sourceText: { marginTop: 4, color: theme.textMuted, fontSize: theme.fontSizes.sm },

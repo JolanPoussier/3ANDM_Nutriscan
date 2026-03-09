@@ -38,6 +38,7 @@ const stackHeaderOptions = {
   headerTitleAlign: "center" as const,
   headerTitle: () => <Image source={yukoLogo} style={{ width: 148, height: 42 }} resizeMode="contain" />,
 };
+const DEFAULT_TAB_ICON: React.ComponentProps<typeof Ionicons>["name"] = "home";
 
 function ScannerStackScreen() {
   const { t } = useI18n();
@@ -226,7 +227,7 @@ export default function RootNavigator() {
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.tabInactive,
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any = "home";
+          let iconName: React.ComponentProps<typeof Ionicons>["name"] = DEFAULT_TAB_ICON;
           if (route.name === "ScannerTab") iconName = focused ? "scan" : "scan-outline";
           else if (route.name === "SearchTab") iconName = focused ? "search" : "search-outline";
           else if (route.name === "FavoritesTab") iconName = focused ? "heart" : "heart-outline";
