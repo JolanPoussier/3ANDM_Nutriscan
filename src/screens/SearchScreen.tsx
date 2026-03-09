@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Image,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -134,6 +132,7 @@ export default function SearchScreen({ navigation }: Props) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const lastEndReachedAt = useRef(0);
+  const canSearch = debouncedQuery.length >= MIN_QUERY_LENGTH;
 
   const nutriBadgeStyle = useMemo(
     () => (nutri?: string) => ({ backgroundColor: getNutriColor(theme, nutri) }),
@@ -164,7 +163,7 @@ export default function SearchScreen({ navigation }: Props) {
     let cancelled = false;
 
     async function runSearch() {
-      if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH) {
+      if (!canSearch) {
         setResults([]);
         setError(null);
         setLoading(false);
@@ -178,12 +177,12 @@ export default function SearchScreen({ navigation }: Props) {
       setError(null);
 
       try {
-        const { mapped } = await fetchSearchPage(debouncedQuery, 1);
+        const { mapped, sourceLength } = await fetchSearchPage(debouncedQuery, 1);
         if (cancelled) return;
 
         setResults(mapped);
         setPage(1);
-        setHasMore(mapped.length > 0);
+        setHasMore(sourceLength === PAGE_SIZE);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : t("common.networkError"));
@@ -200,17 +199,17 @@ export default function SearchScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, t]);
+  }, [canSearch, debouncedQuery, t]);
 
   const emptyMessage = useMemo(() => {
-    if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH) return t("search.startHint");
+    if (!canSearch) return t("search.startHint");
     if (loading || loadingMore) return "";
     if (error) return error;
     return t("search.noResults");
-  }, [debouncedQuery, error, loading, loadingMore, t]);
+  }, [canSearch, error, loading, loadingMore, t]);
 
   async function loadMore() {
-    if (!debouncedQuery || debouncedQuery.length < MIN_QUERY_LENGTH || loading || loadingMore || !hasMore) return;
+    if (!canSearch || loading || loadingMore || !hasMore) return;
 
     setLoadingMore(true);
     setError(null);
@@ -225,18 +224,12 @@ export default function SearchScreen({ navigation }: Props) {
         return [...prev, ...deduped];
       });
       setPage(nextPage);
-      setHasMore(sourceLength > 0);
+      setHasMore(sourceLength === PAGE_SIZE);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.networkError"));
     } finally {
       setLoadingMore(false);
     }
-  }
-
-  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    if (distanceFromBottom < 120) loadMore();
   }
 
   const listContentStyle = results.length === 0 ? styles.emptyList : styles.list;
@@ -273,8 +266,6 @@ export default function SearchScreen({ navigation }: Props) {
             loadMore();
           }}
           onEndReachedThreshold={0.2}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate("ProductDetails", { barcode: item.barcode })}

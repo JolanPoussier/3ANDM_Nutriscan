@@ -104,9 +104,9 @@ export default function ComparePickScreen({ navigation, route }: Props) {
 
         const hits = Array.isArray(res?.hits) ? res.hits : [];
         setApiHits(hits);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (myId !== requestIdRef.current) return;
-        setApiError(e?.message ?? "Erreur lors de la recherche.");
+        setApiError(e instanceof Error ? e.message : "Erreur lors de la recherche.");
         setApiHits([]);
       } finally {
         if (myId === requestIdRef.current) setApiLoading(false);

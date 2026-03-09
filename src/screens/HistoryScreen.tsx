@@ -743,11 +743,6 @@ function createStyles(theme: ReturnType<typeof useAppTheme>["theme"]) {
       fontSize: theme.fontSizes.xs,
       letterSpacing: 0.5,
     },
-    badgeUnknownRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-    },
 
     compareBtn: {
       marginTop: theme.spacing.md,
