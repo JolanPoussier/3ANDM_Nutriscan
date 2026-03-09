@@ -13,7 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "NutriScan a besoin de la caméra pour scanner les codes-barres des produits."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +24,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.x3ANDM_Nutriscan"
     },
     "web": {
       "favicon": "./assets/favicon.png"
