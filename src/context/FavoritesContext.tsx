@@ -1,5 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 export type FavoriteCategory = {
   id: string;
@@ -73,11 +79,15 @@ function normalizeState(raw?: Partial<FavoritesState>): FavoritesState {
   const favorites: FavoriteItem[] = rawFavorites
     .map((item) => ({
       barcode: String(item?.barcode ?? "").trim(),
-      name: String(item?.name ?? "Produit sans nom").trim() || "Produit sans nom",
-      brand: String(item?.brand ?? "Marque inconnue").trim() || "Marque inconnue",
+      name:
+        String(item?.name ?? "Produit sans nom").trim() || "Produit sans nom",
+      brand:
+        String(item?.brand ?? "Marque inconnue").trim() || "Marque inconnue",
       imageUrl: item?.imageUrl ? String(item.imageUrl) : undefined,
       nutriScore: item?.nutriScore ? String(item.nutriScore) : undefined,
-      categoryId: validCategoryIds.has(String(item?.categoryId)) ? String(item?.categoryId) : UNCATEGORIZED_ID,
+      categoryId: validCategoryIds.has(String(item?.categoryId))
+        ? String(item?.categoryId)
+        : UNCATEGORIZED_ID,
       addedAt: Number(item?.addedAt) || Date.now(),
     }))
     .filter((item) => item.barcode.length > 0);
@@ -118,9 +128,13 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       if (!barcode) return;
 
       setState((prev) => {
-        const existsCategory = prev.categories.some((cat) => cat.id === categoryId);
+        const existsCategory = prev.categories.some(
+          (cat) => cat.id === categoryId,
+        );
         const targetCategoryId = existsCategory ? categoryId : UNCATEGORIZED_ID;
-        const index = prev.favorites.findIndex((item) => item.barcode === barcode);
+        const index = prev.favorites.findIndex(
+          (item) => item.barcode === barcode,
+        );
         const nextItem: FavoriteItem = {
           barcode,
           name: input.name?.trim() || "Produit sans nom",
@@ -154,7 +168,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         return {
           ...prev,
           favorites: prev.favorites.map((item) =>
-            item.barcode === barcode ? { ...item, categoryId } : item
+            item.barcode === barcode ? { ...item, categoryId } : item,
           ),
         };
       });
@@ -170,7 +184,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
       setState((prev) => {
         const exists = prev.categories.some(
-          (cat) => cat.name.toLowerCase() === cleaned.toLowerCase()
+          (cat) => cat.name.toLowerCase() === cleaned.toLowerCase(),
         );
         if (exists) return prev;
 
@@ -196,7 +210,9 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         return {
           categories: prev.categories.filter((cat) => cat.id !== id),
           favorites: prev.favorites.map((item) =>
-            item.categoryId === id ? { ...item, categoryId: UNCATEGORIZED_ID } : item
+            item.categoryId === id
+              ? { ...item, categoryId: UNCATEGORIZED_ID }
+              : item,
           ),
         };
       });
@@ -225,11 +241,16 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state]);
 
-  return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
+  return (
+    <FavoritesContext.Provider value={value}>
+      {children}
+    </FavoritesContext.Provider>
+  );
 }
 
 export function useFavorites() {
   const ctx = useContext(FavoritesContext);
-  if (!ctx) throw new Error("useFavorites must be used within FavoritesProvider");
+  if (!ctx)
+    throw new Error("useFavorites must be used within FavoritesProvider");
   return ctx;
 }
