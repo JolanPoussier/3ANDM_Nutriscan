@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
+import { Image } from "react-native";
 
 import { useI18n } from "../context/I18nContext";
 import { useAppTheme } from "../context/ThemeContext";
@@ -31,12 +32,18 @@ const SearchStack = createNativeStackNavigator<SearchStackParamList>();
 const FavoritesStack = createNativeStackNavigator<FavoritesStackParamList>();
 const HistoryStack = createNativeStackNavigator<HistoryStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
+const yukoLogo = require("../../assets/YUKO.png");
+
+const stackHeaderOptions = {
+  headerTitleAlign: "center" as const,
+  headerTitle: () => <Image source={yukoLogo} style={{ width: 148, height: 42 }} resizeMode="contain" />,
+};
 
 function ScannerStackScreen() {
   const { t } = useI18n();
 
   return (
-    <ScannerStack.Navigator>
+    <ScannerStack.Navigator screenOptions={stackHeaderOptions}>
       <ScannerStack.Screen
         name="Scanner"
         component={ScannerScreen}
@@ -70,7 +77,7 @@ function SearchStackScreen() {
   const { t } = useI18n();
 
   return (
-    <SearchStack.Navigator>
+    <SearchStack.Navigator screenOptions={stackHeaderOptions}>
       <SearchStack.Screen
         name="Recherche"
         component={SearchScreen}
@@ -104,7 +111,7 @@ function HistoryStackScreen() {
   const { t } = useI18n();
 
   return (
-    <HistoryStack.Navigator>
+    <HistoryStack.Navigator screenOptions={stackHeaderOptions}>
       <HistoryStack.Screen
         name="Historique"
         component={HistoryScreen}
@@ -138,7 +145,7 @@ function FavoritesStackScreen() {
   const { t } = useI18n();
 
   return (
-    <FavoritesStack.Navigator>
+    <FavoritesStack.Navigator screenOptions={stackHeaderOptions}>
       <FavoritesStack.Screen
         name="Favoris"
         component={FavoritesScreen}
@@ -172,7 +179,7 @@ function SettingsStackScreen() {
   const { t } = useI18n();
 
   return (
-    <SettingsStack.Navigator>
+    <SettingsStack.Navigator screenOptions={stackHeaderOptions}>
       <SettingsStack.Screen
         name="Paramètres"
         component={SettingsScreen}
